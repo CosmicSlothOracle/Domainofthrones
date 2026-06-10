@@ -253,6 +253,10 @@
   .mtopo .mn-name{font-family:var(--sans); fill:var(--muted); font-weight:600;}
   .mtopo .mn-sub{font-family:var(--mono); fill:var(--faint);}
   .mtopo .mlabel{font-family:var(--mono);}
+  .topo-val-tbl .ok{color:var(--green);font-weight:700;}
+  .topo-val-tbl .extra{color:var(--blue);font-weight:600;}
+  .topo-val-tbl .bad{color:var(--red);font-weight:700;}
+  .topo-validate .kv{margin-bottom:.85rem;line-height:1.55;}
   .medge{fill:none; stroke-width:2.2; stroke-linecap:round;}
   .medge.atk{stroke:var(--red);}
   .medge.gap{stroke:var(--red); opacity:.5;}
@@ -295,6 +299,10 @@
         <div class="card">
           <div class="ct">Attack-surface map <span class="tag" id="topoTag">click a step or host</span></div>
           <div class="cb"><svg id="topo" viewBox="0 0 720 430" aria-label="topology"></svg><div class="legend" id="legend"></div></div>
+        </div>
+        <div class="card">
+          <div class="ct">Lab baseline topology <span class="tag">validated against GOAD diagram</span></div>
+          <div class="cb" id="topoBaseline"></div>
         </div>
         <div class="card"><div class="ct">Active detail <span class="tag">drill-down</span></div><div class="cb" id="context"><p class="empty">Select a host on the map or a step on the right to reveal its underlying intelligence…</p></div></div>
       </div>
@@ -357,18 +365,21 @@ const HOSTS={
     tools:["NetExec / CrackMapExec","Impacket (secretsdump, raiseChild, wmiexec)","bloodhound-python","smbclient"],
     siem:"workstationName: UBUNTU-JUMPBOX · 192.168.56.100",
     alerts:[["All 'possible RDP' NTLM alerts (92657) trace here","ntlm_all"],["164 spray failures + 100+ NTLM logons","attacker"]]},
-  winterfell:{x:320,y:90,r:44,fill:"#3b342e",stroke:"#ffb020",icon:"assets/icons/winterfell.png",name:"Winterfell",ip:"192.168.56.11",bh:"WINTERFELL",
+  winterfell:{x:320,y:90,r:44,fill:"#3b342e",stroke:"#ffb020",icon:"assets/icons/winterfell.png",name:"Winterfell",labId:"DC02",ip:"192.168.56.11",bh:"WINTERFELL",
     role:"Child Domain Controller (PDC)",domain:"north.sevenkingdoms.local",
+    labFlags:["Windows Server 2019","rpc user enum","ntlm downgrade"],
     users:[["green","brandon.stark","domain user · SYSVOL read"],["yellow","samwell.tarly","GenericWrite on GPO → DC local admin"],["red","goadmin","child Domain Admin · DCSync"]],
     siem:"agent.name: winterfell · 192.168.56.11",
     alerts:[["brandon.stark NTLM logons ×29","sysvol"],["Massive 4769 noise (robb.stark, ::1)","kerberos"],["GPO 5136 & DCSync 4662: 0 events — GAP","gpo"]]},
-  castelblack:{x:320,y:340,r:42,fill:"#0e0d0a",stroke:"#4aa3ff",icon:"assets/icons/castelblack.png",name:"Castelblack",ip:"192.168.56.22",bh:"CASTELBLACK",
+  castelblack:{x:320,y:340,r:42,fill:"#0e0d0a",stroke:"#4aa3ff",icon:"assets/icons/castelblack.png",name:"Castelblack",labId:"SRV02",ip:"192.168.56.22",bh:"CASTELBLACK",
     role:"Member server — MSSQL / IIS",domain:"north.sevenkingdoms.local (member)",
+    labFlags:["Windows Server 2019 — no defender","IIS + upload ASP","MSSQL + execute as + trusted link"],
     users:[["yellow","jeor.mormont","local Administrator"],["yellow","sql_svc","MSSQL sysadmin · xp_cmdshell"]],
     siem:"agent.name: castelblack · 192.168.56.22",
     alerts:[["jeor.mormont remote admin NTLM ×15 + logon/logoff ×34","cb_localadmin"],["sql_svc 4625 ×2 → 4624 ×9","mssql"]]},
-  kingslanding:{x:610,y:215,r:46,fill:"#3b342e",stroke:"#ff5a52",icon:"assets/icons/kingslanding.png",name:"Kingslanding",ip:"192.168.56.10",
+  kingslanding:{x:610,y:215,r:46,fill:"#3b342e",stroke:"#ff5a52",icon:"assets/icons/kingslanding.png",name:"Kingslanding",labId:"DC01",ip:"192.168.56.10",
     role:"Forest Root Domain Controller",domain:"sevenkingdoms.local",agentNote:"agent 002 · Win Server 2019",
+    labFlags:["Windows Server 2019","ESC1"],
     users:[["orange","north\\goadmin","cross-trust auth via trust key"],["red","sevenkingdoms\\goadmin","Enterprise Admin / root DA"],["purple","KINGHODOR","malicious persistence (EA+DA)"]],
     siem:"agent 002 · kingslanding · 192.168.56.10 (Win Server 2019)",
     alerts:[["Cross-trust goadmin: 4624 ×47 / 92652 ×44","trust"],["KINGHODOR created (4720/4738) — EA add NOT logged","kinghodor"],["Root DCSync (4662): 0 events — GAP","dcsync"]]},
@@ -382,6 +393,20 @@ const EDGES=[
   {id:"jb-cb",a:"jumpbox",b:"castelblack",cls:"attack"},
   {id:"jb-kl",a:"jumpbox",b:"kingslanding",cls:"attack"},
   {id:"wf-kl",a:"winterfell",b:"kingslanding",cls:"trust"}
+];
+const TOPO_VALIDATE=[
+  {ref:"Root forest sevenkingdoms.local",dash:"DOMAINS.root · Kingslanding DC01",ok:true},
+  {ref:"Child domain north.sevenkingdoms.local",dash:"DOMAINS.north · Winterfell DC02 + Castelblack SRV02",ok:true},
+  {ref:"DC01 kingslanding · 192.168.56.10 · ESC1",dash:"HOSTS.kingslanding · .10 · ESC1",ok:true},
+  {ref:"DC02 winterfell · 192.168.56.11 · rpc enum / NTLM downgrade",dash:"HOSTS.winterfell · .11 · rpc enum / NTLM downgrade",ok:true},
+  {ref:"SRV02 castelblack · 192.168.56.22 · IIS / MSSQL / no Defender",dash:"HOSTS.castelblack · .22 · IIS / MSSQL / no Defender",ok:true},
+  {ref:"Bidirectional trust (sevenkingdoms ↔ north)",dash:"Edge wf-kl · trust · SID filtering OFF",ok:true},
+  {ref:"north\\jeor.mormont · admin on Castelblack",dash:"Lab baseline local admin · attack step 4",ok:true},
+  {ref:"north\\jon.snow · MSSQL admin / linked server",dash:"Lab baseline · sql_svc / xp_cmdshell chain",ok:true},
+  {ref:"north\\eddard.stark · child Domain Admin",dash:"BloodHound DA · PTH over trust (step 10)",ok:true},
+  {ref:"sevenkingdoms\\robert.baratheon / cersei.lannister · root DAs",dash:"Lab baseline root DAs (not in attack chain UI)",ok:true},
+  {ref:"Attacker Ubuntu jumpbox · 192.168.56.100",dash:"Assessment overlay — not on lab poster",ok:"extra"},
+  {ref:"Wazuh manager goad-vm-wazuh · 192.168.56.51",dash:"Assessment overlay — SIEM for this report",ok:"extra"}
 ];
 const DOMAINS={
   north:{label:"north (CHILD)",full:"north.sevenkingdoms.local",dc:"Winterfell · 192.168.56.11",
@@ -559,6 +584,11 @@ const PROOF={
       {src:EVIDENCE_IMG+"image.png",caption:"LDAP: KINGHODOR als member unter Enterprise Admins@sevenkingdoms.local."}
     ]
   },
+  topology:{
+    baseline:[
+      {src:EVIDENCE_IMG+"goad_lab_topology.png",caption:"Official GOAD lab topology (ForestLord-ZeroTrustOrNot-GOAD): sevenkingdoms.local ↔ north.sevenkingdoms.local with DC01 (.10), DC02 (.11), SRV02 (.22) and bidirectional trust — validated against the dashboard attack-surface map above."}
+    ]
+  },
   hardening:{
     laps:[
       {src:EVIDENCE_IMG+"cme_castelblack.png",caption:"Shared local admin ohne LAPS: ein Passwort → (Pwn3d!) auf Castelblack."},
@@ -676,6 +706,19 @@ function renderLegend(){
   $("#legend").innerHTML=items.map(i=>`<span><i style="background:${i[0]}"></i>${i[1]}</span>`).join("")
     +'<span style="opacity:.4">|</span>'+privs.map(i=>`<span><i style="background:${i[0]};border-radius:50%"></i>${i[1]}</span>`).join("");
 }
+function renderTopoBaseline(){
+  const statusLabel={true:"✓ aligned",extra:"+ assessment overlay",false:"✗ mismatch"};
+  const rows=TOPO_VALIDATE.map(v=>{
+    const cls=v.ok===true?"ok":v.ok==="extra"?"extra":"bad";
+    return `<tr><td>${esc(v.ref)}</td><td class="mono" style="font-size:.78rem">${esc(v.dash)}</td><td class="topo-val ${cls}">${statusLabel[v.ok]||statusLabel[false]}</td></tr>`;
+  }).join("");
+  let s=`<div class="topo-validate">`;
+  s+=`<p class="kv">Cross-checked against the official GOAD lab diagram. All three Windows hosts (DC01/DC02/SRV02), both domains, IPs, and the bidirectional trust match what this dashboard propagates on the attack-surface map. Jumpbox (<span class="mono">.100</span>) and Wazuh (<span class="mono">.51</span>) are assessment overlays — they are not on the lab poster.</p>`;
+  s+=`<table class="ev topo-val-tbl"><tr><th>Lab reference</th><th>Dashboard mapping</th><th>Status</th></tr>${rows}</table>`;
+  s+=proofBlock(proofItems("topology","baseline"));
+  s+=`</div>`;
+  $("#topoBaseline").innerHTML=s;
+}
 
 /* ---------- topology ---------- */
 function buildTopo(){
@@ -729,7 +772,7 @@ function buildTopo(){
     const mk=(y,t,fs,fill,w,anchor)=>{const x=document.createElementNS(SVGNS,"text");x.setAttribute("y",y);x.setAttribute("text-anchor",anchor||"middle");x.setAttribute("font-size",fs);x.setAttribute("fill",fill);if(w)x.setAttribute("font-weight",w);x.textContent=t;g.appendChild(x);};
     mk(h.r+12,h.name,"11.5",h.stroke,"700");
     mk(h.r+22,h.ip,"8.5","#d4d8e0");
-    mk(h.r+32,h.role.includes("Root")?"Root DC":h.role.includes("Child")?"Child DC":h.role.includes("Member")?"Member":h.role.includes("SIEM")?"SIEM":"Attacker","7.5","#918b8c");
+    mk(h.r+32,h.labId|| (h.role.includes("Root")?"Root DC":h.role.includes("Child")?"Child DC":h.role.includes("Member")?"Member":h.role.includes("SIEM")?"SIEM":"Attacker"),"7.5","#918b8c");
     g.addEventListener("click",()=>showHost(id));
     svg.appendChild(g);
   });
@@ -768,6 +811,8 @@ function showHost(id){
   const h=HOSTS[id];
   let s=`<div class="ctxhead"><h3>${esc(h.name)}</h3><span class="role">${esc(h.role)}</span></div>`;
   s+=`<div class="kv"><b>IP:</b> <span class="mono">${h.ip}</span>${h.pub?` · <b>Public:</b> <span class="mono">${h.pub}</span>`:""}</div>`;
+  if(h.labId)s+=`<div class="kv"><b>Lab host:</b> <span class="mono">${esc(h.labId)}</span></div>`;
+  if(h.labFlags&&h.labFlags.length)s+=`<div class="kv"><b>Lab flags:</b> ${h.labFlags.map(f=>`<span class="chip">${esc(f)}</span>`).join(" ")}</div>`;
   s+=`<div class="kv"><b>Domain:</b> ${esc(h.domain)}</div>`;
   s+=`<div class="kv"><b>SIEM:</b> <span class="mono">${esc(h.siem)}</span></div>`;
   if(h.note)s+=`<div class="kv">${esc(h.note)}</div>`;
@@ -1076,7 +1121,7 @@ function revealSecret(type,account){
 }
 
 /* ---------- init ---------- */
-renderKPIs();renderLegend();buildTopo();
+renderKPIs();renderLegend();buildTopo();renderTopoBaseline();
 renderDomTabs();renderDomPanel();
 renderKerbNoise();
 renderVault();renderSteps();renderHard();
