@@ -59,3 +59,9 @@ These hosts serve static files only — **no login gate**. Use Netlify if you ne
 ## Logout
 
 Open `/.netlify/functions/logout` to clear the session cookie and return to the login page.
+
+---
+
+Excuse me. Can i hold that door for you.
+- how wonderfull a gentle giant -
+HOOOOOOOOOOOOOOOOODOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOR
