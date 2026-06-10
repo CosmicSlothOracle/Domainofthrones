@@ -1,49 +1,61 @@
 # Domain of Thrones — GOAD Attack & Defense Dashboard
 
-Static interactive report. Deploy anywhere that serves HTML — no server or tunnel required.
+Static interactive report with a shared passphrase gate on **Netlify**.
 
-**Live URL after deploy:** `https://cosmicslothoracle.github.io/Domainofthrones/` or your Vercel domain.
+**Repo:** [CosmicSlothOracle/Domainofthrones](https://github.com/CosmicSlothOracle/Domainofthrones)
 
 ## Contents
 
 ```
-index.html              ← dashboard entry point
+index.html              ← dashboard (protected)
+login.html              ← poem + passphrase form
 dashboard-data.js       ← events, BloodHound, secrets, narratives
-assets/icons/           ← host icons on the topology map
-assets/evidence/        ← proof screenshots
-GOAD_Attack_Evidence.zip
+assets/                 ← icons + evidence screenshots
+netlify/                ← login function, edge protect, Blobs sessions
 ```
 
 Lab data only — redact credentials in `dashboard-data.js` before publishing.
 
 ---
 
-## Deploy: GitHub Pages (recommended)
+## Deploy on Netlify (recommended)
 
-1. Push is already on [CosmicSlothOracle/Domainofthrones](https://github.com/CosmicSlothOracle/Domainofthrones).
-2. On GitHub: **Settings → Pages**
-   - **Source:** Deploy from a branch
-   - **Branch:** `main` / `/ (root)`
-   - Save
-3. After ~1 minute, open `https://cosmicslothoracle.github.io/Domainofthrones/`
-
-No build step. No config files required.
-
----
-
-## Deploy: Vercel (alternative)
-
-1. Go to [vercel.com/new](https://vercel.com/new) → import **Domainofthrones**.
-2. Leave defaults (Framework: **Other**, no build command, output: **.**).
+1. Go to [app.netlify.com](https://app.netlify.com) → **Add new site** → **Import from Git** → select **Domainofthrones**.
+2. Build settings (auto-detected from `netlify.toml`):
+   - **Build command:** `npm install`
+   - **Publish directory:** `.`
 3. Deploy.
 
----
+Visitors land on `/login.html`, read the poem, and enter the passphrase. Sessions are stored in [Netlify Blobs](https://docs.netlify.com/build/data-and-storage/netlify-blobs/) after a successful login.
 
-## Local preview
+### Passphrase rules
+
+- Default passphrase: `ThereIsNoSpoon`
+- **Case insensitive** — `thereisnospoon` works
+- **Spaces ignored** — `there is no spoon` works
+
+Optional: override in Netlify **Site configuration → Environment variables**:
+
+| Variable | Purpose |
+|----------|---------|
+| `SITE_PASSWORD` | Change the shared passphrase without redeploying code |
+
+### Local dev
 
 ```powershell
-python -m http.server 8000 --bind 127.0.0.1
-# http://127.0.0.1:8000/
+npm install
+npx netlify dev
+# http://localhost:8888/login.html
 ```
 
-Lab data only — redact credentials before sharing.
+---
+
+## GitHub Pages / Vercel
+
+These hosts serve static files only — **no login gate**. Use Netlify if you need the shared passphrase.
+
+---
+
+## Logout
+
+Open `/.netlify/functions/logout` to clear the session cookie and return to the login page.
