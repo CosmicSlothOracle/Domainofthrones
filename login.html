@@ -6,105 +6,264 @@
 <title>Domain of Thrones — Enter</title>
 <style>
   :root{
-    --bg:#030201; --bg2:#0e0d0a; --panel:#0e0d0a; --line:#24211a;
-    --ink:#fafafa; --muted:#d4d8e0; --faint:#acacac;
-    --red:#ff5a52; --blue:#4aa3ff; --green:#3ddc84;
-    --mono:ui-monospace,"JetBrains Mono","SF Mono",Menlo,Consolas,monospace;
-    --sans:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-    --radius:4px;
+    --parchment:#ebe0c8;
+    --parchment-deep:#dccfb2;
+    --parchment-edge:#c9b995;
+    --ink:#2f2218;
+    --ink-faded:#5c4a32;
+    --ink-light:#7a6548;
+    --stain:rgba(120,82,40,.09);
+    --red-ink:#8b2e2e;
+    --mono:"Courier New",Courier,"Lucida Console","IBM Plex Mono",monospace;
   }
   *{box-sizing:border-box;}
   html,body{margin:0; min-height:100vh;}
   body{
-    font-family:var(--sans); color:var(--ink); line-height:1.6;
+    font-family:var(--mono);
+    color:var(--ink);
     background:
-      radial-gradient(1200px 600px at 80% -10%, rgba(212,216,224,.05), transparent 60%),
-      radial-gradient(900px 500px at 0% 10%, rgba(107,97,94,.08), transparent 55%),
-      linear-gradient(180deg,var(--bg),var(--bg2));
-    display:flex; align-items:center; justify-content:center; padding:2rem 1rem;
+      radial-gradient(ellipse 120% 80% at 50% 0%, #3a3228 0%, #1a1610 55%, #0d0b08 100%);
+    display:flex; align-items:center; justify-content:center;
+    padding:clamp(1rem,4vw,2.5rem);
   }
-  .card{
-    width:min(560px,100%); background:var(--panel); border:1px solid var(--line);
-    border-radius:var(--radius); padding:2rem 2rem 1.75rem; box-shadow:0 12px 40px rgba(0,0,0,.55);
+
+  .scroll{
+    position:relative;
+    width:min(640px,100%);
+    padding:clamp(1.8rem,5vw,2.8rem) clamp(1.5rem,4vw,2.4rem) clamp(2rem,5vw,2.6rem);
+    background-color:var(--parchment);
+    background-image:
+      repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 27px,
+        rgba(92,74,50,.07) 27px,
+        rgba(92,74,50,.07) 28px
+      ),
+      radial-gradient(ellipse 85% 70% at 18% 22%, var(--stain), transparent 62%),
+      radial-gradient(ellipse 60% 55% at 88% 78%, rgba(90,60,30,.11), transparent 58%),
+      radial-gradient(ellipse 50% 40% at 72% 18%, rgba(100,70,35,.07), transparent 55%),
+      linear-gradient(168deg, #f2e8d4 0%, var(--parchment) 38%, var(--parchment-deep) 100%);
+    border:1px solid var(--parchment-edge);
+    box-shadow:
+      inset 0 0 80px rgba(139,105,55,.12),
+      inset 0 0 0 1px rgba(255,248,230,.45),
+      0 2px 0 rgba(255,248,230,.25),
+      0 18px 50px rgba(0,0,0,.45),
+      0 4px 14px rgba(0,0,0,.25);
+    overflow:hidden;
   }
-  .eyebrow{
-    font-size:.72rem; letter-spacing:.22em; text-transform:uppercase;
-    color:var(--faint); font-weight:600; margin-bottom:.35rem;
+  .scroll::before,
+  .scroll::after{
+    content:"";
+    position:absolute; left:0; right:0; height:14px; pointer-events:none;
+    background:linear-gradient(90deg, transparent, rgba(80,55,30,.08) 20%, rgba(80,55,30,.12) 50%, rgba(80,55,30,.08) 80%, transparent);
   }
-  h1{font-size:1.45rem; font-weight:800; margin:0 0 1.25rem; letter-spacing:-.01em;}
+  .scroll::before{top:0; opacity:.55;}
+  .scroll::after{bottom:0; opacity:.4; transform:scaleY(-1);}
+
+  .watermarks{
+    position:absolute; inset:0; pointer-events:none; overflow:hidden;
+  }
+  .watermarks img{
+    position:absolute;
+    opacity:.075;
+    filter:sepia(.55) saturate(.35) contrast(.85) brightness(1.05);
+    mix-blend-mode:multiply;
+  }
+  .wm-jumpbox{width:88px; top:6%; left:4%; transform:rotate(-14deg);}
+  .wm-winterfell{width:96px; top:10%; right:6%; transform:rotate(9deg);}
+  .wm-castelblack{width:84px; bottom:14%; left:7%; transform:rotate(7deg);}
+  .wm-kingslanding{width:102px; bottom:8%; right:5%; transform:rotate(-8deg);}
+  .wm-wazuh{width:72px; top:42%; left:50%; transform:translateX(-50%) rotate(3deg); opacity:.06;}
+
+  .content{position:relative; z-index:1;}
+
+  .mast{
+    text-align:center;
+    margin-bottom:1.6rem;
+    padding-bottom:1rem;
+    border-bottom:1px solid rgba(92,74,50,.22);
+  }
+  .mast .tag{
+    font-size:.68rem;
+    letter-spacing:.28em;
+    text-transform:uppercase;
+    color:var(--ink-light);
+    margin-bottom:.45rem;
+  }
+  .mast h1{
+    margin:0;
+    font-size:clamp(1rem,3.2vw,1.15rem);
+    font-weight:700;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    color:var(--ink);
+  }
+
   .poem{
-    margin:0 0 1.5rem; padding:1rem 1.1rem; border-left:3px solid var(--blue);
-    background:rgba(74,163,255,.06); border-radius:0 var(--radius) var(--radius) 0;
-    font-family:var(--mono); font-size:.82rem; color:var(--muted); white-space:pre-line;
-    line-height:1.75;
+    margin:0;
+    font-size:clamp(.78rem,2.4vw,.88rem);
+    line-height:1.85;
+    letter-spacing:.03em;
+    color:var(--ink-faded);
+    text-shadow:0 1px 0 rgba(255,248,230,.35);
   }
-  label{display:block; font-size:.72rem; letter-spacing:.12em; text-transform:uppercase; color:var(--faint); font-weight:600; margin-bottom:.45rem;}
-  input[type=password]{
-    width:100%; padding:.75rem .85rem; border-radius:var(--radius); border:1px solid var(--line);
-    background:#030201; color:var(--ink); font-family:var(--mono); font-size:.95rem;
+  .poem p{margin:0;}
+
+  .poem-final{
+    margin-top:0;
+    color:var(--ink);
+    display:flex;
+    flex-wrap:wrap;
+    align-items:baseline;
+    gap:0;
   }
-  input[type=password]:focus{outline:none; border-color:var(--blue); box-shadow:0 0 0 3px rgba(74,163,255,.15);}
-  button{
-    margin-top:1rem; width:100%; padding:.8rem 1rem; border:0; border-radius:var(--radius);
-    background:var(--blue); color:#030201; font-weight:800; letter-spacing:.04em;
-    cursor:pointer; font-size:.88rem;
+  .poem-final .lead{white-space:pre;}
+
+  #loginForm{display:contents;}
+
+  .poem-input-wrap{
+    display:inline-flex;
+    align-items:baseline;
+    flex:1 1 8rem;
+    min-width:min(100%, 10rem);
+    max-width:100%;
   }
-  button:hover{filter:brightness(1.08);}
-  button:disabled{opacity:.55; cursor:not-allowed;}
+
+  .poem-input{
+    flex:1;
+    min-width:7rem;
+    border:0;
+    border-bottom:1px solid var(--ink-faded);
+    background:transparent;
+    color:var(--ink);
+    font:inherit;
+    font-size:inherit;
+    line-height:inherit;
+    letter-spacing:.06em;
+    padding:.05rem 0 .12rem;
+    margin:0;
+    caret-color:var(--ink);
+    -webkit-text-security:disc;
+    text-security:disc;
+  }
+  .poem-input::placeholder{
+    color:transparent;
+    letter-spacing:.18em;
+  }
+  .poem-input:focus{
+    outline:none;
+    border-bottom-color:var(--ink);
+    border-bottom-width:2px;
+    padding-bottom:.02rem;
+  }
+
+  .submit-mark{
+    display:inline;
+    color:var(--ink-light);
+    font-size:.95em;
+    margin-left:.15rem;
+    user-select:none;
+  }
+
   .err{
-    margin-top:.85rem; color:var(--red); font-size:.82rem; min-height:1.2em;
+    margin:.85rem 0 0;
+    min-height:1.1em;
+    font-size:.78rem;
+    color:var(--red-ink);
+    letter-spacing:.04em;
   }
-  .hint{margin-top:1rem; font-size:.72rem; color:var(--faint); text-align:center;}
+  .hint{
+    margin-top:1.1rem;
+    font-size:.68rem;
+    color:var(--ink-light);
+    letter-spacing:.08em;
+    text-align:center;
+    opacity:.85;
+  }
+
+  @media (max-width:480px){
+    .watermarks img{opacity:.05;}
+    .wm-jumpbox,.wm-winterfell{width:64px;}
+    .wm-castelblack,.wm-kingslanding{width:60px;}
+    .wm-wazuh{width:52px;}
+  }
 </style>
 </head>
 <body>
-  <main class="card">
-    <div class="eyebrow">GOAD Assessment</div>
-    <h1>Domain of Thrones</h1>
+  <main class="scroll">
+    <div class="watermarks" aria-hidden="true">
+      <img class="wm-jumpbox" src="assets/icons/jumpbox.png" alt="" />
+      <img class="wm-winterfell" src="assets/icons/winterfell.png" alt="" />
+      <img class="wm-castelblack" src="assets/icons/castelblack.png" alt="" />
+      <img class="wm-kingslanding" src="assets/icons/kingslanding.png" alt="" />
+      <img class="wm-wazuh" src="assets/icons/wazuh.png" alt="" />
+    </div>
 
-    <pre class="poem" aria-label="Access verse">GreedIsGood,
-The cake is a lie.
-ISeeDeadPeople,
-All RiseAndShine.
-Time is upon us,
-The dawn of the SIEM.
+    <div class="content">
+      <header class="mast">
+        <div class="tag">GOAD Assessment</div>
+        <h1>Domain of Thrones</h1>
+      </header>
 
-SharpAndShiny,
-Research upgrade.
-WhoIsYourDaddy,
-One-hitting rage.
-A forest to rule,
-Simulations don't age.
+      <form id="loginForm">
+        <div class="poem" aria-label="Access verse">
+          <p>GreedIsGood,</p>
+          <p>The cake is a lie.</p>
+          <p>ISeeDeadPeople,</p>
+          <p>All RiseAndShine.</p>
+          <p>Time is upon us,</p>
+          <p>The dawn of the SIEM.</p>
+          <p>&nbsp;</p>
+          <p>SharpAndShiny,</p>
+          <p>Research upgrade.</p>
+          <p>WhoIsYourDaddy,</p>
+          <p>One-hitting rage.</p>
+          <p>A forest to rule,</p>
+          <p>Simulations don't age.</p>
+          <p>&nbsp;</p>
+          <p>Listen the tune !</p>
+          <p>don't just assume</p>
+          <p>Get unlimited mana</p>
+          <p class="poem-final">
+            <span class="lead">And shoot for the moon. </span>
+            <span class="poem-input-wrap">
+              <input
+                id="password"
+                name="password"
+                class="poem-input"
+                type="password"
+                autocomplete="current-password"
+                spellcheck="false"
+                autofocus
+                required
+                aria-label="Passphrase"
+              />
+            </span><span class="submit-mark" title="Press Enter">↵</span>
+          </p>
+        </div>
+        <p class="err" id="error" role="alert"></p>
+      </form>
 
-Listen the tune !
-might be a fork or a vibrating rune
-Get unlimited mana 
-And shoot for the moon.</pre>
-
-    <form id="loginForm">
-      <label for="password">Passphrase</label>
-      <input id="password" name="password" type="password" autocomplete="current-password" autofocus required />
-      <button type="submit" id="submitBtn">Enter the realm</button>
-      <p class="err" id="error" role="alert"></p>
-    </form>
-    <p class="hint">Case and spaces are ignored.</p>
+      <p class="hint">case and spaces ignored · press Enter</p>
+    </div>
   </main>
 
   <script>
     const form = document.getElementById("loginForm");
     const errorEl = document.getElementById("error");
-    const submitBtn = document.getElementById("submitBtn");
+    const passwordEl = document.getElementById("password");
 
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
       errorEl.textContent = "";
-      submitBtn.disabled = true;
 
       try {
         const res = await fetch("/.netlify/functions/login", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ password: document.getElementById("password").value }),
+          body: JSON.stringify({ password: passwordEl.value }),
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) {
@@ -114,8 +273,6 @@ And shoot for the moon.</pre>
         window.location.href = data.redirect || "/";
       } catch {
         errorEl.textContent = "Could not reach the server.";
-      } finally {
-        submitBtn.disabled = false;
       }
     });
   </script>

@@ -268,9 +268,6 @@
   @keyframes flash{0%{box-shadow:0 0 0 2px var(--amber),0 0 22px rgba(255,176,32,.5);}100%{box-shadow:var(--shadow);}}
 
   footer{margin-top:2.5rem; padding-top:1rem; border-top:1px solid var(--line); font-size:.74rem; color:var(--faint);}
-  footer .footer-actions{margin-top:1rem; display:flex; flex-wrap:wrap; gap:.65rem; align-items:center;}
-  .btn-dl-evidence{display:inline-flex; align-items:center; gap:.35rem; font:inherit; font-size:.78rem; font-weight:600; padding:.45rem .85rem; border:1px solid rgba(74,163,255,.45); background:var(--bluebg); color:var(--blue); border-radius:8px; text-decoration:none; cursor:pointer;}
-  .btn-dl-evidence:hover{background:var(--panel3); color:var(--ink); border-color:var(--blue);}
 </style>
 </head>
 <body>
@@ -335,10 +332,6 @@
   <footer>
     <p>Evidence pulled live from the Wazuh indexer (<span class="mono">wazuh-alerts-*</span>) + dashboard threat-hunting exports + BloodHound graph (collected as brandon.stark) + DCSync/LSA loot + terminal/graph screenshots (<span class="mono">assets/evidence/</span>).
     Data layer: <span class="mono">dashboard-data.js</span>. Lab data only — redact credentials/hashes before sharing.</p>
-    <div class="footer-actions">
-      <a class="btn-dl-evidence" id="dlEvidence" href="GOAD_Attack_Evidence.zip" download="GOAD_Attack_Evidence.zip">↓ Download all evidence (ZIP)</a>
-      <span class="hint" style="font-size:.72rem;color:var(--faint)">Terminal &amp; BloodHound screenshots referenced in the dashboard · <span class="mono">GOAD_Attack_Evidence.zip</span></span>
-    </div>
   </footer>
 </div>
 <div id="imgLightbox" role="dialog" aria-modal="true" aria-label="Expanded screenshot" hidden>
