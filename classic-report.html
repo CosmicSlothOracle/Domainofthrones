@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>GOAD — Purple Team Assessment (Classic Report)</title>
+  <meta name="description" content="Professional, modern classic report of a full GOAD forest compromise." />
+  <style>
+    :root {
+      --text-main: #2c2e33;
+      --text-muted: #5a5f68;
+      --bg-page: #fdfdfc;
+      --bg-surface: #ffffff;
+      --border-light: #e5e7eb;
+      --border-dark: #d1d5db;
+      --accent-red: #d92d20;
+      --accent-blue: #2563eb;
+      --accent-purple: #7c3aed;
+      --accent-green: #059669;
+      --accent-amber: #d97706;
+      --font-serif: "Merriweather", "Georgia", "Times New Roman", serif;
+      --font-sans: "Inter", system-ui, -apple-system, sans-serif;
+      --font-mono: ui-monospace, "JetBrains Mono", Menlo, Consolas, monospace;
+    }
+
+    * { box-sizing: border-box; }
+    
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg-page);
+      color: var(--text-main);
+      font-family: var(--font-serif);
+      line-height: 1.7;
+      font-size: 16px;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 2rem 2rem 5rem;
+    }
+
+    /* Typography */
+    h1, h2, h3, h4, h5 {
+      font-family: var(--font-sans);
+      color: #111827;
+      line-height: 1.3;
+      margin-top: 2.5rem;
+      margin-bottom: 1rem;
+    }
+
+    h1 {
+      font-size: 2.5rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      border-bottom: 2px solid var(--border-light);
+      padding-bottom: 1rem;
+      margin-top: 1rem;
+    }
+
+    h2 {
+      font-size: 1.8rem;
+      font-weight: 700;
+      color: var(--accent-red);
+      border-bottom: 1px solid var(--border-light);
+      padding-bottom: 0.5rem;
+    }
+    
+    .blue-theme h2 { color: var(--accent-blue); }
+    .purple-theme h2 { color: var(--accent-purple); }
+
+    h3 {
+      font-size: 1.4rem;
+      font-weight: 600;
+    }
+
+    h4 {
+      font-size: 1.1rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      margin-top: 1.5rem;
+      margin-bottom: 0.5rem;
+    }
+
+    p {
+      margin: 0 0 1.2rem;
+    }
+
+    a {
+      color: var(--accent-blue);
+      text-decoration: none;
+    }
+    a:hover { text-decoration: underline; }
+
+    .lead {
+      font-size: 1.15rem;
+      color: var(--text-muted);
+      font-family: var(--font-sans);
+      margin-bottom: 2rem;
+    }
+
+    /* UI Elements */
+    .toolbar {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(253, 253, 252, 0.95);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--border-light);
+      padding: 0.8rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-family: var(--font-sans);
+      font-size: 0.9rem;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid var(--border-dark);
+      background: #fff;
+      color: #374151;
+      transition: all 0.2s;
+    }
+    .btn:hover { background: #f3f4f6; }
+    .btn-primary { background: var(--accent-blue); color: #fff; border-color: var(--accent-blue); }
+    .btn-primary:hover { background: #1d4ed8; }
+
+    /* Report Blocks */
+    .exec-summary {
+      background: #f9fafb;
+      border-left: 4px solid var(--accent-red);
+      padding: 1.5rem 2rem;
+      margin: 2rem 0;
+      border-radius: 0 8px 8px 0;
+    }
+
+    .exec-summary p:last-child { margin-bottom: 0; }
+
+    .metadata-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 1rem;
+      margin: 2rem 0;
+      font-family: var(--font-sans);
+      font-size: 0.9rem;
+    }
+
+    .meta-item {
+      background: #fff;
+      border: 1px solid var(--border-light);
+      padding: 1rem;
+      border-radius: 6px;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+    }
+
+    .meta-item .label {
+      text-transform: uppercase;
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      letter-spacing: 0.05em;
+      margin-bottom: 0.25rem;
+    }
+
+    .meta-item .value {
+      font-weight: 500;
+      color: #111827;
+    }
+
+    /* Code & Terminals */
+    pre.cmd {
+      background: #1f2937;
+      color: #f3f4f6;
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      padding: 1rem 1.2rem;
+      border-radius: 6px;
+      overflow-x: auto;
+      margin: 1rem 0;
+      line-height: 1.5;
+      border-left: 4px solid var(--accent-blue);
+    }
+
+    code {
+      font-family: var(--font-mono);
+      background: #f3f4f6;
+      padding: 0.1rem 0.3rem;
+      border-radius: 3px;
+      font-size: 0.9em;
+      color: var(--accent-red);
+    }
+
+    /* Figures & Images */
+    figure {
+      margin: 2rem 0;
+      background: #fff;
+      border: 1px solid var(--border-light);
+      border-radius: 8px;
+      padding: 0.5rem;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    }
+
+    figure img {
+      display: block;
+      width: 100%;
+      height: auto;
+      border-radius: 4px;
+    }
+
+    figcaption {
+      font-family: var(--font-sans);
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      text-align: center;
+      padding: 0.75rem 0.5rem 0.25rem;
+      border-top: 1px solid var(--border-light);
+      margin-top: 0.5rem;
+    }
+
+    /* Tables */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1.5rem 0;
+      font-family: var(--font-sans);
+      font-size: 0.85rem;
+    }
+
+    th, td {
+      text-align: left;
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid var(--border-light);
+    }
+
+    th {
+      background: #f9fafb;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-size: 0.75rem;
+    }
+
+    td.mono {
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+    }
+
+    /* Tags & Chips */
+    .chip {
+      display: inline-block;
+      font-family: var(--font-sans);
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 0.2rem 0.6rem;
+      border-radius: 999px;
+      background: #f3f4f6;
+      color: #374151;
+      margin-right: 0.4rem;
+      margin-bottom: 0.4rem;
+    }
+    .chip.red { background: #fee2e2; color: #991b1b; }
+    .chip.green { background: #d1fae5; color: #065f46; }
+    .chip.amber { background: #fef3c7; color: #92400e; }
+
+    /* Step Styling */
+    .step-block {
+      margin-bottom: 3.5rem;
+    }
+
+    .step-header {
+      display: flex;
+      align-items: baseline;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .step-num {
+      font-family: var(--font-sans);
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: var(--accent-red);
+    }
+
+    /* Print Styles */
+    @media print {
+      body {
+        background: #fff;
+        font-size: 11pt;
+      }
+      .toolbar { display: none; }
+      .container {
+        max-width: 100%;
+        padding: 0;
+      }
+      h1 { margin-top: 0; }
+      h2 { break-after: avoid; margin-top: 2rem; }
+      figure { break-inside: avoid; border: none; box-shadow: none; margin: 1.5rem 0; }
+      figure img { border: 1px solid #ddd; }
+      table { break-inside: avoid; }
+      .step-block { break-inside: avoid; }
+      .page-break { break-before: page; }
+    }
+  </style>
+</head>
+<body>
+  <div class="toolbar">
+    <div><strong>GOAD Purple Team</strong> — Classic Report</div>
+    <div style="display: flex; gap: 0.5rem;">
+      <a href="GOAD_Report_Evidence.zip" class="btn" download>Download Evidence ZIP</a>
+      <button class="btn btn-primary" onclick="window.print()">Print to PDF</button>
+    </div>
+  </div>
+
+  <div class="container">
+    <h1>Penetration Test Write-Up:<br>GOAD Active Directory Compromise</h1>
+    <p class="lead">A comprehensive Purple Team assessment detailing the full compromise of the <code>north.sevenkingdoms.local</code> child domain and the <code>sevenkingdoms.local</code> forest root.</p>
+
+    <div class="exec-summary">
+      <h4>Executive Summary</h4>
+      <p>A single unmanaged Linux host drove a complete forest takeover. The engagement began with a password spray that recovered <code>brandon.stark</code>. Subsequent enumeration of SYSVOL and LDAP description fields leaked further credentials. A writable GPO was abused to grant local administrator rights on the child Domain Controller, allowing a DCSync attack to extract the child domain's credential material.</p>
+      <p>Because SID filtering was disabled on the inter-domain trust, the operator forged an Enterprise-Admins SID into the forest root (Golden Ticket via <code>raiseChild</code>). This enabled a root DCSync and the creation of a durable backdoor account (<code>KINGHODOR</code>). A separate autonomous run by the <strong>Cursor Composer</strong> agent successfully replicated this objective, installing a <code>Composer</code> backdoor.</p>
+      <p>While the SIEM detected noisy early phases (spray bursts, lockouts), it remained blind to the most damaging actions: GPO modification (5136/4698), directory replication (4662), and privileged group additions (4728/4756) produced zero events.</p>
+    </div>
+
+    <div class="metadata-grid" id="metaGrid"></div>
+
+    <div class="page-break"></div>
+
+    <section class="red-theme">
+      <h2>1. Red Team: Attack Execution</h2>
+      <p>The following narrative details the step-by-step execution of the attack chain, supported by annotated terminal output and BloodHound graphs.</p>
+      
+      <div id="redSteps"></div>
+
+      <div class="step-block page-break">
+        <div class="step-header">
+          <span class="step-num">★</span>
+          <h3 style="margin:0;">Autonomous Run: Cursor Composer</h3>
+        </div>
+        <p>In a separate, fully autonomous session, Cursor's in-house Composer agent was tasked with achieving Domain Admin on the GOAD lab without fetching external write-ups. The agent successfully navigated the environment, escalated privileges, and installed persistence.</p>
+        <div class="metadata-grid">
+          <div class="meta-item"><div class="label">Model</div><div class="value" id="compModel"></div></div>
+          <div class="meta-item"><div class="label">Tokens Used</div><div class="value" id="compTokens"></div></div>
+          <div class="meta-item"><div class="label">Duration</div><div class="value" id="compDuration"></div></div>
+        </div>
+        <h4>Verification Command</h4>
+        <pre class="cmd" id="compCmd"></pre>
+        <figure>
+          <img id="compImg" src="" alt="Composer Run Evidence">
+          <figcaption>Cursor billing usage, autonomous prompt, LDAP Enterprise-Admins proof, and agent session.</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <div class="page-break"></div>
+
+    <section class="blue-theme">
+      <h2>2. Blue Team: Detection & Hardening</h2>
+      <p>This section outlines the telemetry observed by the Wazuh SIEM during the engagement, highlighting successful detections and critical blind spots (marked as GAP).</p>
+      <div id="blueHardening"></div>
+    </section>
+
+    <div class="page-break"></div>
+
+    <section class="purple-theme">
+      <h2>3. Purple Team: Synthesis</h2>
+      <p>Aligning the attack techniques with expected telemetry and actionable remediation strategies.</p>
+      <div id="purpleSynthesis"></div>
+    </section>
+
+    <div class="page-break"></div>
+
+    <section>
+      <h2>4. Evidence Appendix</h2>
+      <p>Raw terminal output, BloodHound graphs, and other supporting artifacts.</p>
+      <div id="evidenceAppendix" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem;"></div>
+    </section>
+
+  </div>
+
+  <script src="dashboard-data.js"></script>
+  <script src="report-data.js"></script>
+  <script>
+    const EVID = window.EVID || {}, BH = window.BLOODHOUND || {}, SEC = window.SECRETS || {},
+      KERB_NOISE = window.KERB_NOISE || {}, NARRATIVES = window.NARRATIVES || {}, COMPOSER_RUN = window.COMPOSER_RUN || {};
+    
+    const esc = s => String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+    // Metadata
+    const meta = [
+      ["Forest Root", "sevenkingdoms.local (192.168.56.10)"],
+      ["Child Domain", "north.sevenkingdoms.local (192.168.56.11)"],
+      ["Member Server", "Castelblack (192.168.56.22)"],
+      ["Attacker", "Ubuntu Jumpbox (192.168.56.100)"],
+      ["SIEM", "Wazuh Manager (192.168.56.51)"],
+      ["Trust Config", "Bidirectional, SID filtering DISABLED"]
+    ];
+    document.getElementById("metaGrid").innerHTML = meta.map(m => `<div class="meta-item"><div class="label">${esc(m[0])}</div><div class="value">${esc(m[1])}</div></div>`).join("");
+
+    // Red Team Steps
+    let redHtml = "";
+    REPORT_STEPS.forEach(st => {
+      redHtml += `<div class="step-block">
+        <div class="step-header">
+          <span class="step-num">${st.n}.</span>
+          <h3 style="margin:0;">${esc(st.t)}</h3>
+        </div>
+        <p><strong>Target Hosts:</strong> ${st.hosts.map(h => HOSTS[h] ? HOSTS[h].name : h).join(" → ")}</p>
+        <p>${esc(st.summary)}</p>`;
+      
+      if (st.body && st.body.length) {
+        redHtml += `<ul>${st.body.map(b => `<li>${esc(b)}</li>`).join("")}</ul>`;
+      }
+      
+      if (st.img) {
+        redHtml += `<figure><img src="${esc(st.img)}" alt="${esc(st.t)}"><figcaption>Evidence: ${esc(st.t)}</figcaption></figure>`;
+      }
+      redHtml += `</div>`;
+    });
+    document.getElementById("redSteps").innerHTML = redHtml;
+
+    // Composer
+    document.getElementById("compModel").textContent = COMPOSER_RUN.model || "—";
+    document.getElementById("compTokens").textContent = COMPOSER_RUN.tokens || "—";
+    document.getElementById("compDuration").textContent = COMPOSER_RUN.duration || "—";
+    document.getElementById("compCmd").textContent = COMPOSER_RUN.verifyCmd || "—";
+    document.getElementById("compImg").src = COMPOSER_RUN.proofImg || "";
+
+    // Blue Team Hardening
+    let blueHtml = "";
+    HARDENING.forEach(h => {
+      const isGap = h.status === "gap";
+      const badge = isGap ? `<span class="chip red">GAP</span>` : `<span class="chip green">DETECTED</span>`;
+      blueHtml += `<div class="step-block" style="border-left: 3px solid ${isGap ? 'var(--accent-red)' : 'var(--accent-green)'}; padding-left: 1.5rem;">
+        <h3 style="margin-top:0;">${badge} ${esc(h.title)}</h3>
+        <p><strong>Scope:</strong> ${esc(h.scope)} | <strong>MITRE:</strong> ${esc(h.mitre)}</p>
+        <p><strong>Observation:</strong> ${h.why}</p>
+        <p><strong>Remediation:</strong> ${esc(h.fix)}</p>
+        <h4>Wazuh Query</h4>
+        <pre class="cmd">${esc(h.query)}</pre>
+      </div>`;
+    });
+    document.getElementById("blueHardening").innerHTML = blueHtml;
+
+    // Purple Team
+    let purpleHtml = "";
+    PURPLE_STEPS.forEach(p => {
+      purpleHtml += `<div class="step-block">
+        <h3 style="margin-top:0;">${p.n}. ${esc(p.title)}</h3>
+        <p><strong>Attack:</strong> ${esc(p.attack)}</p>
+        <p><strong>Hardening:</strong> ${esc(p.remediation)}</p>
+        <h4>Expected Telemetry</h4>
+        <table>
+          <thead><tr><th>Signal</th><th>What to look for</th></tr></thead>
+          <tbody>
+            ${p.telemetry.map(t => `<tr><td class="mono">${esc(t[0])}</td><td>${esc(t[1])}</td></tr>`).join("")}
+          </tbody>
+        </table>
+      </div>`;
+    });
+    document.getElementById("purpleSynthesis").innerHTML = purpleHtml;
+
+    // Evidence Appendix
+    let evHtml = "";
+    // Collect unique evidence images
+    const uniqueEv = [];
+    const seenSrc = new Set();
+    EVD_DESC.forEach(cat => {
+      cat.items.forEach(item => {
+        if (!seenSrc.has(item.src)) {
+          seenSrc.add(item.src);
+          uniqueEv.push(item);
+        }
+      });
+    });
+    uniqueEv.forEach(item => {
+      evHtml += `<figure style="margin:0;"><img src="${esc(item.src)}" alt="Evidence" loading="lazy"><figcaption>${esc(item.caption)}</figcaption></figure>`;
+    });
+    document.getElementById("evidenceAppendix").innerHTML = evHtml;
+
+  </script>
+</body>
+</html>

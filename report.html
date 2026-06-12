@@ -1,0 +1,1309 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>GOAD — Purple Team Assessment (Printable Report)</title>
+  <meta name="description"
+    content="Printable Red/Blue/Purple Team report of a full GOAD forest compromise, with original Wazuh telemetry and terminal/BloodHound evidence inline. Print to PDF ready." />
+  <meta name="color-scheme" content="dark" />
+  <style>
+    :root {
+      --bg: #030201;
+      --bg2: #0e0d0a;
+      --panel: #0e0d0a;
+      --panel2: #24211a;
+      --panel3: #060504;
+      --line: #24211a;
+      --line2: #3b342e;
+      --ink: #fafafa;
+      --muted: #d4d8e0;
+      --faint: #acacac;
+      --faint2: #918b8c;
+      --brand: #6b615e;
+      --accent: #acacac;
+      --red: #ff5a52;
+      --amber: #ffb020;
+      --orange: #ff8a3d;
+      --green: #3ddc84;
+      --blue: #4aa3ff;
+      --purple: #b08bff;
+      --cyan: #3fd6d6;
+      --redbg: rgba(255, 90, 82, .1);
+      --amberbg: rgba(255, 176, 32, .1);
+      --greenbg: rgba(61, 220, 132, .1);
+      --bluebg: rgba(74, 163, 255, .1);
+      --purplebg: rgba(176, 139, 255, .1);
+      --mono: ui-monospace, "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
+      --sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      --radius: 4px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+    }
+
+    body {
+      font-family: var(--sans);
+      color: var(--ink);
+      line-height: 1.55;
+      font-size: 14px;
+      background: linear-gradient(180deg, var(--bg), var(--bg2));
+      padding: 0 0 4rem;
+    }
+
+    .wrap {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: clamp(16px, 2vw, 32px);
+    }
+
+    .mono {
+      font-family: var(--mono);
+    }
+
+    a {
+      color: var(--blue);
+    }
+
+    /* ---- toolbar (screen only) ---- */
+    .toolbar {
+      position: sticky;
+      top: 0;
+      z-index: 30;
+      display: flex;
+      gap: .7rem;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      padding: .7rem clamp(16px, 2vw, 32px);
+      background: linear-gradient(180deg, rgba(3, 2, 1, .97), rgba(3, 2, 1, .85));
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--line);
+    }
+
+    .toolbar .grp {
+      display: flex;
+      gap: .6rem;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: .45rem;
+      border-radius: 999px;
+      padding: .5rem 1rem;
+      font: 700 .82rem var(--sans);
+      cursor: pointer;
+      border: 1px solid var(--line2);
+      background: var(--panel);
+      color: var(--ink);
+      text-decoration: none;
+      transition: .15s;
+    }
+
+    .btn:hover {
+      border-color: var(--accent);
+    }
+
+    .btn-print {
+      background: var(--bluebg);
+      border-color: rgba(74, 163, 255, .5);
+      color: var(--blue);
+    }
+
+    .btn-zip {
+      background: var(--greenbg);
+      border-color: rgba(61, 220, 132, .5);
+      color: var(--green);
+    }
+
+    .toolbar .hint {
+      font-size: .72rem;
+      color: var(--faint);
+    }
+
+    /* ---- cover ---- */
+    .cover {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background:
+        radial-gradient(900px 400px at 90% -20%, rgba(176, 139, 255, .08), transparent 60%),
+        radial-gradient(700px 360px at -10% 0%, rgba(255, 90, 82, .08), transparent 55%),
+        var(--panel);
+      padding: 1.8rem;
+      margin: 1.2rem 0;
+    }
+
+    .cover .eyebrow {
+      font-size: .72rem;
+      letter-spacing: .24em;
+      text-transform: uppercase;
+      color: var(--faint);
+      font-weight: 700;
+    }
+
+    .cover h1 {
+      font-size: 2rem;
+      font-weight: 800;
+      letter-spacing: -.01em;
+      margin: .35rem 0 .2rem;
+    }
+
+    .cover .sub {
+      color: var(--muted);
+      font-size: .95rem;
+      max-width: 70ch;
+    }
+
+    .verdict {
+      display: inline-flex;
+      align-items: center;
+      gap: .55rem;
+      background: var(--redbg);
+      border: 1px solid rgba(255, 90, 82, .45);
+      color: var(--red);
+      padding: .5rem .9rem;
+      border-radius: 999px;
+      font-weight: 800;
+      letter-spacing: .04em;
+      font-size: .82rem;
+      margin-top: 1rem;
+    }
+
+    .verdict .dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: var(--red);
+    }
+
+    .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: .6rem;
+      margin-top: 1.2rem;
+    }
+
+    .meta-grid .m {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: .55rem .7rem;
+      background: var(--panel3);
+    }
+
+    .meta-grid .k {
+      font-size: .64rem;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--faint);
+      font-weight: 700;
+    }
+
+    .meta-grid .v {
+      font-size: .9rem;
+      margin-top: .15rem;
+      color: var(--ink);
+    }
+
+    .kpis {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(135px, 1fr));
+      gap: .7rem;
+      margin: 1.2rem 0;
+    }
+
+    .kpi {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: .7rem .8rem;
+      border-left: 3px solid var(--accent);
+    }
+
+    .kpi.red {
+      border-left-color: var(--red);
+    }
+
+    .kpi.amber {
+      border-left-color: var(--amber);
+    }
+
+    .kpi.cyan {
+      border-left-color: var(--cyan);
+    }
+
+    .kpi .k {
+      font-size: .62rem;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    .kpi .v {
+      font-family: var(--mono);
+      font-size: 1.45rem;
+      font-weight: 800;
+      margin-top: .15rem;
+    }
+
+    .kpi .x {
+      font-size: .68rem;
+      color: var(--faint);
+      margin-top: .1rem;
+    }
+
+    /* ---- sections ---- */
+    section.report-section {
+      margin-top: 2.2rem;
+    }
+
+    .section-band {
+      display: flex;
+      align-items: baseline;
+      gap: .8rem;
+      border-bottom: 2px solid var(--line2);
+      padding-bottom: .4rem;
+      margin-bottom: 1rem;
+    }
+
+    .section-band h2 {
+      font-size: 1.35rem;
+      font-weight: 900;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+      margin: 0;
+    }
+
+    .band-red h2 {
+      color: var(--red);
+    }
+
+    .band-blue h2 {
+      color: var(--blue);
+    }
+
+    .band-purple h2 {
+      color: var(--purple);
+    }
+
+    .band-appendix h2 {
+      color: var(--accent);
+    }
+
+    .section-band .lead {
+      color: var(--faint);
+      font-size: .82rem;
+    }
+
+    h3.sub-h {
+      font-size: 1rem;
+      font-weight: 800;
+      margin: 1.6rem 0 .6rem;
+      color: var(--ink);
+    }
+
+    p.lede {
+      color: var(--muted);
+      max-width: 78ch;
+      margin: .3rem 0 1rem;
+    }
+
+    /* ---- cards / blocks ---- */
+    .card {
+      border: 1px solid var(--line2);
+      border-radius: var(--radius);
+      background: var(--panel);
+      padding: 1rem;
+      margin: 0 0 1rem;
+    }
+
+    .step-card {
+      border-left: 3px solid var(--brand);
+    }
+
+    .phase-foothold {
+      border-left-color: var(--green);
+    }
+
+    .phase-child {
+      border-left-color: var(--amber);
+    }
+
+    .phase-forest {
+      border-left-color: var(--orange);
+    }
+
+    .phase-persist {
+      border-left-color: var(--purple);
+    }
+
+    .step-head {
+      display: flex;
+      align-items: center;
+      gap: .7rem;
+      flex-wrap: wrap;
+    }
+
+    .step-num {
+      font-family: var(--mono);
+      font-weight: 800;
+      font-size: 1rem;
+      background: var(--panel2);
+      border: 1px solid var(--line2);
+      border-radius: var(--radius);
+      width: 2rem;
+      height: 2rem;
+      display: grid;
+      place-items: center;
+      flex: none;
+    }
+
+    .step-title {
+      font-size: 1rem;
+      font-weight: 800;
+      margin: 0;
+    }
+
+    .ph {
+      font-family: var(--mono);
+      font-size: .62rem;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      padding: .12rem .4rem;
+      border-radius: 3px;
+      border: 1px solid var(--line2);
+      color: var(--faint);
+    }
+
+    .step-hosts {
+      font-size: .74rem;
+      color: var(--faint);
+      font-family: var(--mono);
+      margin: .35rem 0 .5rem;
+    }
+
+    pre.cmd {
+      font-family: var(--mono);
+      font-size: .74rem;
+      background: var(--bg);
+      color: var(--muted);
+      border: 1px solid var(--line2);
+      border-left: 3px solid var(--brand);
+      padding: .6rem .7rem .6rem 1.7rem;
+      border-radius: var(--radius);
+      overflow-x: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+      margin: .45rem 0;
+      position: relative;
+    }
+
+    pre.cmd::before {
+      content: "$";
+      position: absolute;
+      left: .65rem;
+      top: .6rem;
+      color: var(--brand);
+      font-weight: 700;
+    }
+
+    .loot {
+      font-size: .82rem;
+      margin: .4rem 0;
+    }
+
+    .loot b {
+      color: var(--green);
+    }
+
+    .lognote {
+      font-size: .78rem;
+      color: var(--muted);
+      border: 1px dashed var(--line2);
+      border-radius: var(--radius);
+      padding: .45rem .6rem;
+      margin: .5rem 0;
+      background: var(--panel3);
+    }
+
+    h4.lbl {
+      font-size: .66rem;
+      text-transform: uppercase;
+      letter-spacing: .12em;
+      color: var(--faint);
+      font-weight: 800;
+      margin: .9rem 0 .35rem;
+      display: flex;
+      align-items: center;
+      gap: .4rem;
+    }
+
+    h4.lbl::after {
+      content: "";
+      flex: 1;
+      height: 1px;
+      background: var(--line);
+    }
+
+    /* ---- telemetry ---- */
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .35rem;
+      margin: .4rem 0;
+    }
+
+    .chip {
+      font-family: var(--mono);
+      font-size: .7rem;
+      border: 1px solid var(--line2);
+      border-radius: 999px;
+      padding: .15rem .5rem;
+      color: var(--muted);
+      background: var(--panel3);
+    }
+
+    .chip.red {
+      color: var(--red);
+      border-color: rgba(255, 90, 82, .4);
+    }
+
+    .lvl {
+      font-weight: 800;
+      border-radius: 3px;
+      padding: 0 .3rem;
+      font-size: .65rem;
+    }
+
+    .lvl.hi {
+      background: var(--redbg);
+      color: var(--red);
+    }
+
+    .lvl.md {
+      background: var(--amberbg);
+      color: var(--amber);
+    }
+
+    .lvl.lo {
+      background: var(--greenbg);
+      color: var(--green);
+    }
+
+    table.ev {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: .72rem;
+      margin: .5rem 0;
+    }
+
+    table.ev th,
+    table.ev td {
+      border: 1px solid var(--line);
+      padding: .3rem .45rem;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    table.ev th {
+      background: var(--panel2);
+      color: var(--faint);
+      font-size: .64rem;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+    }
+
+    table.ev td.mono {
+      font-family: var(--mono);
+    }
+
+    .scrollx {
+      overflow-x: auto;
+    }
+
+    .qbox {
+      font-family: var(--mono);
+      font-size: .72rem;
+      background: var(--bg);
+      border: 1px solid var(--line2);
+      border-radius: var(--radius);
+      padding: .45rem .6rem;
+      color: var(--cyan);
+      margin: .4rem 0;
+      word-break: break-word;
+    }
+
+    .gap-flag {
+      display: inline-block;
+      font-weight: 800;
+      font-size: .68rem;
+      letter-spacing: .06em;
+      color: var(--red);
+      border: 1px solid rgba(255, 90, 82, .5);
+      background: var(--redbg);
+      border-radius: 3px;
+      padding: .1rem .4rem;
+    }
+
+    .on-flag {
+      display: inline-block;
+      font-weight: 800;
+      font-size: .68rem;
+      color: var(--green);
+      border: 1px solid rgba(61, 220, 132, .5);
+      background: var(--greenbg);
+      border-radius: 3px;
+      padding: .1rem .4rem;
+    }
+
+    .src {
+      font-size: .76rem;
+      color: var(--faint);
+      border-left: 2px solid var(--line2);
+      padding-left: .6rem;
+      margin: .5rem 0;
+    }
+
+    .why {
+      font-size: .84rem;
+      color: var(--muted);
+      margin: .3rem 0;
+    }
+
+    .fix {
+      font-size: .84rem;
+      margin: .3rem 0;
+    }
+
+    .fix b,
+    .why b {
+      color: var(--ink);
+    }
+
+    .debate-note {
+      font-size: .78rem;
+      color: var(--amber);
+      border-left: 2px solid var(--amber);
+      padding-left: .6rem;
+      margin: .4rem 0;
+    }
+
+    /* ---- evidence figures (always visible for print) ---- */
+    .ev-figs {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: .8rem;
+      margin: .6rem 0;
+    }
+
+    figure.ev-fig {
+      margin: 0;
+      border: 1px solid var(--line2);
+      border-radius: var(--radius);
+      overflow: hidden;
+      background: var(--panel3);
+      break-inside: avoid;
+    }
+
+    figure.ev-fig img {
+      display: block;
+      width: 100%;
+      height: auto;
+      background: #000;
+    }
+
+    figure.ev-fig figcaption {
+      font-size: .72rem;
+      color: var(--muted);
+      padding: .45rem .55rem;
+      border-top: 1px solid var(--line);
+    }
+
+    .proof-credit {
+      display: block;
+      font-size: .62rem;
+      color: var(--faint2);
+      margin-top: .2rem;
+    }
+
+    /* topology */
+    svg#topo {
+      width: 100%;
+      height: auto;
+      background: radial-gradient(circle at 50% 42%, rgba(107, 97, 94, .12), transparent 72%);
+      border: 1px solid var(--line2);
+      border-radius: var(--radius);
+    }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .4rem 1rem;
+      font-size: .7rem;
+      color: var(--muted);
+      margin-top: .5rem;
+    }
+
+    .legend i {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 3px;
+      margin-right: .35rem;
+      vertical-align: -1px;
+    }
+
+    .u {
+      display: flex;
+      gap: .5rem;
+      align-items: baseline;
+      font-size: .8rem;
+      margin: .2rem 0;
+    }
+
+    .u i {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      flex: none;
+      position: relative;
+      top: 2px;
+    }
+
+    .u .uname {
+      font-family: var(--mono);
+      color: var(--ink);
+      font-weight: 600;
+    }
+
+    .u .udesc {
+      color: var(--faint);
+    }
+
+    ul.tight {
+      margin: .2rem 0;
+      padding-left: 1.1rem;
+      font-size: .82rem;
+      color: var(--muted);
+    }
+
+    ul.tight li {
+      margin: .2rem 0;
+    }
+
+    .kv {
+      font-size: .82rem;
+      margin: .2rem 0;
+      color: var(--muted);
+    }
+
+    .kv b {
+      color: var(--ink);
+    }
+
+    .chip-sm {
+      font-family: var(--mono);
+      font-size: .68rem;
+      border: 1px solid var(--line2);
+      border-radius: 3px;
+      padding: .05rem .35rem;
+      color: var(--muted);
+    }
+
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+
+    @media(max-width:820px) {
+      .two-col {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .callout {
+      border: 1px solid var(--line2);
+      border-left: 3px solid var(--cyan);
+      border-radius: var(--radius);
+      background: var(--panel3);
+      padding: .8rem 1rem;
+      margin: 1rem 0;
+      font-size: .86rem;
+      color: var(--muted);
+    }
+
+    .composer-stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: .6rem;
+      margin: .7rem 0;
+    }
+
+    .composer-stat {
+      background: var(--panel3);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: .5rem .65rem;
+    }
+
+    .composer-stat .k {
+      font-size: .62rem;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--faint);
+      font-weight: 700;
+    }
+
+    .composer-stat .v {
+      font-family: var(--mono);
+      font-weight: 700;
+      color: var(--cyan);
+      margin-top: .15rem;
+      font-size: .9rem;
+    }
+
+    footer {
+      margin-top: 2.5rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--line);
+      font-size: .72rem;
+      color: var(--faint);
+    }
+
+    .empty {
+      color: var(--faint);
+      font-style: italic;
+      font-size: .82rem;
+    }
+
+    /* =====================================================================
+       PRINT — print to PDF / Microsoft Print to PDF ready
+       ===================================================================== */
+    @page {
+      size: A4;
+      margin: 13mm 12mm;
+    }
+
+    @media print {
+
+      html,
+      body {
+        background: #fff !important;
+      }
+
+      body {
+        color: #000;
+        font-size: 10.5px;
+      }
+
+      /* keep the dark report palette faithful on the PDF */
+      .cover,
+      .card,
+      .kpi,
+      .composer-stat,
+      .meta-grid .m,
+      figure.ev-fig,
+      svg#topo,
+      .qbox,
+      pre.cmd,
+      .callout,
+      table.ev th {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+
+      .no-print {
+        display: none !important;
+      }
+
+      .wrap {
+        max-width: none;
+        padding: 0;
+      }
+
+      a {
+        color: var(--blue);
+        text-decoration: none;
+      }
+
+      /* new page per major team section */
+      section.report-section {
+        break-before: page;
+        margin-top: 0;
+      }
+
+      section#sec-cover {
+        break-before: auto;
+      }
+
+      /* never split these across pages */
+      .step-card,
+      .hard-card,
+      .purple-card,
+      figure.ev-fig,
+      .composer-card,
+      .dom-card,
+      .cover,
+      table.ev {
+        break-inside: avoid;
+      }
+
+      h2,
+      h3.sub-h,
+      h4.lbl {
+        break-after: avoid;
+      }
+
+      .scrollx {
+        overflow: visible;
+      }
+
+      figure.ev-fig img {
+        max-height: 150mm;
+        width: auto;
+        max-width: 100%;
+        margin: 0 auto;
+      }
+
+      .ev-figs {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="toolbar no-print">
+    <div class="grp">
+      <strong style="font-size:.86rem">GOAD Purple Team — Printable Report</strong>
+      <span class="hint">Use your browser's Print → <em>Save as PDF</em> / <em>Microsoft Print to PDF</em>.</span>
+    </div>
+    <div class="grp">
+      <a class="btn btn-zip" href="GOAD_Report_Evidence.zip" download>⬇ Download evidence (.zip)</a>
+      <button type="button" class="btn btn-print" id="printBtn">🖨 Print / Save as PDF</button>
+      <a class="btn" href="writeup.html">Editorial write-up →</a>
+      <a class="btn" href="index.html">Interactive dashboard →</a>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <section id="sec-cover" class="report-section" style="margin-top:0">
+      <div class="cover">
+        <div class="eyebrow">GOAD · Game of Active Directory — Purple Team Assessment</div>
+        <h1>Forest Compromise Report</h1>
+        <p class="sub">Full attack-path narrative across the <span class="mono">north.sevenkingdoms.local</span> child
+          domain and the <span class="mono">sevenkingdoms.local</span> forest root, paired with the original Wazuh
+          telemetry and terminal/BloodHound evidence. Red Team (how it happened), Blue Team (what the SIEM saw and
+          missed), and Purple Team (attack ↔ detection ↔ hardening) are printed in one document.</p>
+        <div class="verdict"><span class="dot"></span> VERDICT: FOREST FULLY COMPROMISED &amp; PERSISTENT</div>
+        <div class="meta-grid" id="coverMeta"></div>
+      </div>
+      <div class="kpis" id="coverKpis"></div>
+      <div class="callout" id="execSummary"></div>
+    </section>
+
+    <section class="report-section" id="sec-red">
+      <div class="section-band band-red">
+        <h2>Red Team</h2>
+        <span class="lead">Attack execution — topology, kill chain, and the autonomous-agent run.</span>
+      </div>
+      <h3 class="sub-h">Attack-surface topology</h3>
+      <div class="card">
+        <svg id="topo" viewBox="0 0 720 430" aria-label="Attack surface topology"></svg>
+        <div class="legend" id="legend"></div>
+      </div>
+      <h3 class="sub-h">Attack chain — 16 steps</h3>
+      <p class="lede">Each step lists the executed command, the recovered loot, the matching Wazuh telemetry, and the
+        original terminal/graph evidence captured during the engagement.</p>
+      <div id="redSteps"></div>
+      <h3 class="sub-h">Annotated field notes</h3>
+      <p class="lede">The operator's hand-marked write-up pages, one per intrusion phase — the original GIMP-annotated
+        references behind the steps above.</p>
+      <div id="fieldNotes"></div>
+      <h3 class="sub-h">Autonomous run — Cursor Composer</h3>
+      <div id="composerCard"></div>
+    </section>
+
+    <section class="report-section" id="sec-blue">
+      <div class="section-band band-blue">
+        <h2>Blue Team</h2>
+        <span class="lead">Detection &amp; hardening — what fired, what was a blind spot, and how to close it.</span>
+      </div>
+      <p class="lede">Twelve hardening findings, each with the live Wazuh evidence behind it. Detection gaps are marked
+        <span class="gap-flag">GAP</span> and are backed by empty query result sets (the SIEM produced zero events for
+        that technique).</p>
+      <div id="blueHard"></div>
+      <h3 class="sub-h">Telemetry noise — Kerberos 4769 flood</h3>
+      <div id="kerbNoise"></div>
+    </section>
+
+    <section class="report-section" id="sec-purple">
+      <div class="section-band band-purple">
+        <h2>Purple Team</h2>
+        <span class="lead">Attack ↔ telemetry ↔ remediation, the two domains, and recovered credentials.</span>
+      </div>
+      <div id="purpleSteps"></div>
+      <h3 class="sub-h">Domains &amp; BloodHound</h3>
+      <div id="domains"></div>
+      <h3 class="sub-h">Recovered credentials</h3>
+      <p class="lede">Source-of-truth credential material recovered during the assessment. Sensitive NT hashes and AES
+        keys are redacted in this published report; raw telemetry is in the evidence bundle.</p>
+      <div id="creds"></div>
+    </section>
+
+    <section class="report-section" id="sec-appendix">
+      <div class="section-band band-appendix">
+        <h2>Evidence Appendix</h2>
+        <span class="lead">Every original screenshot referenced above, full size.</span>
+      </div>
+      <p class="lede">All files below are included in <span class="mono">GOAD_Report_Evidence.zip</span> alongside the
+        raw Wazuh JSON exports. Captions retain the engagement's original notes.</p>
+      <div class="ev-figs" id="appendix"></div>
+    </section>
+
+    <footer>
+      <p>Generated from <span class="mono">report-data.js</span> (static attack model) + <span
+          class="mono">dashboard-data.js</span> (Wazuh telemetry). Evidence: <span
+          class="mono">assets/evidence/</span>, <span class="mono">assets/reportaspng/</span>, and raw exports in <span
+          class="mono">GOAD_Report_Evidence.zip</span>.</p>
+    </footer>
+  </div>
+
+  <script src="dashboard-data.js"></script>
+  <script src="report-data.js"></script>
+  <script>
+    const EVID = window.EVID || {}, BH = window.BLOODHOUND || {}, SEC = window.SECRETS || {},
+      KERB_NOISE = window.KERB_NOISE || {}, NARRATIVES = window.NARRATIVES || {}, COMPOSER_RUN = window.COMPOSER_RUN || {};
+    const SVGNS = "http://www.w3.org/2000/svg";
+    const $ = s => document.querySelector(s);
+    const esc = s => String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    const lvlClass = l => l >= 10 ? "hi" : l >= 6 ? "md" : "lo";
+    function fmtCmd(c) { return esc(c); }
+
+    /* ---------- cover ---------- */
+    function renderCover() {
+      const meta = [
+        ["Forest root", "sevenkingdoms.local · Kingslanding (192.168.56.10)"],
+        ["Child domain", "north.sevenkingdoms.local · Winterfell (192.168.56.11)"],
+        ["Member server", "Castelblack (192.168.56.22) · MSSQL/IIS"],
+        ["Attacker", "Ubuntu jumpbox (192.168.56.100 / 20.52.216.214)"],
+        ["SIEM", "Wazuh manager goad-vm-wazuh (192.168.56.51)"],
+        ["Trust", "Bidirectional · SID filtering DISABLED"]
+      ];
+      $("#coverMeta").innerHTML = meta.map(m => `<div class="m"><div class="k">${esc(m[0])}</div><div class="v">${esc(m[1])}</div></div>`).join("");
+
+      const gaps = (HARDENING || []).filter(h => h.status === "gap").length;
+      const creds = (SEC.passwords || []).length;
+      const kpis = [
+        ["red", "16", "Attack steps", "spray → forest DA → persistence"],
+        ["red", "2", "Domains owned", "child + forest root"],
+        ["amber", String(gaps), "Detection gaps", "GPO · DCSync · EA group-add"],
+        ["", String(creds), "Credentials recovered", "passwords + service accounts"],
+        ["cyan", esc(COMPOSER_RUN.tokens || "—"), "Composer tokens", esc(COMPOSER_RUN.duration || "autonomous run")]
+      ];
+      $("#coverKpis").innerHTML = kpis.map(k => `<div class="kpi ${k[0]}"><div class="k">${esc(k[2])}</div><div class="v">${esc(k[1])}</div><div class="x">${esc(k[3])}</div></div>`).join("");
+
+      $("#execSummary").innerHTML = `<b style="color:var(--ink)">Executive summary.</b> A single unmanaged Linux host
+        drove a complete forest takeover: a password spray recovered <b>brandon.stark</b>, SYSVOL and an LDAP
+        description field leaked further credentials, a writable GPO granted local admin on the child DC, and DCSync
+        dumped the child domain. With SID filtering disabled on the trust, <span class="mono">raiseChild</span> forged an
+        Enterprise-Admins SID into the forest root, enabling a root DCSync and a durable backdoor account
+        (<b>KINGHODOR</b>). The same objective was later reproduced fully autonomously by Cursor's in-house
+        <b>Composer</b> agent, which reached Enterprise Admin and planted a <span class="mono">Composer</span> backdoor.
+        The SIEM detected the noisy early phases (spray bursts, lockouts) but was <b>blind to the most damaging actions</b>
+        — GPO change (5136/4698), replication (4662), and privileged group additions (4728/4756) produced zero events.`;
+    }
+
+    /* ---------- topology (static) ---------- */
+    function buildTopo() {
+      const svg = $("#topo"); if (!svg) return;
+      svg.innerHTML = "";
+      const defs = document.createElementNS(SVGNS, "defs");
+      defs.innerHTML = '<marker id="ah" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#ff5a52"/></marker>';
+      svg.appendChild(defs);
+      EDGES.forEach(e => {
+        const a = HOSTS[e.a], b = HOSTS[e.b];
+        const p = document.createElementNS(SVGNS, "line");
+        p.setAttribute("x1", a.x); p.setAttribute("y1", a.y); p.setAttribute("x2", b.x); p.setAttribute("y2", b.y);
+        p.setAttribute("fill", "none");
+        p.setAttribute("stroke", e.cls === "trust" ? "#4aa3ff" : "#ff5a52");
+        p.setAttribute("stroke-width", "2");
+        if (e.cls === "trust") p.setAttribute("stroke-dasharray", "2 5");
+        else { p.setAttribute("opacity", ".6"); p.setAttribute("marker-end", "url(#ah)"); }
+        svg.appendChild(p);
+      });
+      const tl = document.createElementNS(SVGNS, "text");
+      tl.setAttribute("x", (HOSTS.winterfell.x + HOSTS.kingslanding.x) / 2); tl.setAttribute("y", 140);
+      tl.setAttribute("text-anchor", "middle"); tl.setAttribute("font-size", "9.5"); tl.setAttribute("fill", "#4aa3ff");
+      tl.textContent = "trust · SID filtering OFF"; svg.appendChild(tl);
+      Object.entries(HOSTS).forEach(([id, h]) => {
+        const g = document.createElementNS(SVGNS, "g");
+        g.setAttribute("transform", `translate(${h.x},${h.y})`);
+        const bg = document.createElementNS(SVGNS, "circle");
+        bg.setAttribute("r", h.r); bg.setAttribute("fill", h.fill);
+        bg.setAttribute("stroke", h.stroke); bg.setAttribute("stroke-width", "2.8");
+        g.appendChild(bg);
+        if (h.icon) {
+          const clipId = "clip-" + id;
+          const cp = document.createElementNS(SVGNS, "clipPath"); cp.setAttribute("id", clipId);
+          const cc = document.createElementNS(SVGNS, "circle"); cc.setAttribute("r", h.r - 2); cp.appendChild(cc);
+          g.appendChild(cp);
+          const img = document.createElementNS(SVGNS, "image");
+          img.setAttributeNS("http://www.w3.org/1999/xlink", "href", h.icon);
+          img.setAttribute("href", h.icon);
+          img.setAttribute("x", -h.r); img.setAttribute("y", -h.r);
+          img.setAttribute("width", h.r * 2); img.setAttribute("height", h.r * 2);
+          img.setAttribute("clip-path", "url(#" + clipId + ")");
+          img.setAttribute("preserveAspectRatio", "xMidYMid slice");
+          g.appendChild(img);
+        }
+        const mk = (y, t, fs, fill, w) => { const x = document.createElementNS(SVGNS, "text"); x.setAttribute("y", y); x.setAttribute("text-anchor", "middle"); x.setAttribute("font-size", fs); x.setAttribute("fill", fill); if (w) x.setAttribute("font-weight", w); x.setAttribute("paint-order", "stroke"); x.setAttribute("stroke", "rgba(3,2,1,.85)"); x.setAttribute("stroke-width", "2"); x.textContent = t; g.appendChild(x); };
+        mk(h.r + 13, h.name, "11.5", h.stroke, "700");
+        mk(h.r + 24, h.ip, "8.5", "#d4d8e0");
+        svg.appendChild(g);
+      });
+      const items = [["#acacac", "Attacker"], ["#ffb020", "Child DC"], ["#ff5a52", "Root DC"], ["#4aa3ff", "Member"], ["#3ddc84", "SIEM"]];
+      $("#legend").innerHTML = items.map(i => `<span><i style="background:${i[0]}"></i>${i[1]}</span>`).join("")
+        + '<span style="opacity:.4">|</span><span><i style="background:#ff5a52;border-radius:50%"></i>attack</span><span><i style="background:#4aa3ff;border-radius:50%"></i>trust</span>';
+    }
+
+    /* ---------- telemetry block ---------- */
+    function evBlock(ev) {
+      if (!ev) return `<p class="empty">No matching events were indexed.</p>`;
+      const hasData = (ev.samples && ev.samples.length) || Object.keys(ev.byRule || {}).length;
+      let s = "";
+      if (!hasData) {
+        s += `<p><span class="gap-flag">0 EVENTS — DETECTION GAP</span></p>`;
+        if (ev.note) s += `<div class="src">▸ ${esc(ev.note)}</div>`;
+        return s;
+      }
+      const rules = Object.entries(ev.byRule || {});
+      if (rules.length) {
+        s += `<div class="chips">` + rules.map(([k, v]) => { const o = typeof v === "object" ? v : { count: v }; const t = RULE_DESC[k] ? ` title="${esc(RULE_DESC[k])}"` : (o.desc ? ` title="${esc(o.desc)}"` : ""); return `<span class="chip"${t}>rule ${esc(k)} ×${o.count}${o.level != null && o.level !== "" ? ` <span class="lvl ${lvlClass(o.level)}">L${o.level}</span>` : ""}</span>`; }).join("") + `</div>`;
+      }
+      const users = Object.entries(ev.byUser || {});
+      if (users.length) s += `<div class="chips">` + users.slice(0, 10).map(([k, v]) => `<span class="chip">${esc(k)} ×${v}</span>`).join("") + `</div>`;
+      const src = Object.entries(ev.bySrc || {});
+      if (src.length) s += `<div class="chips">` + src.map(([k, v]) => `<span class="chip red">src ${esc(k)} ×${v}</span>`).join("") + `</div>`;
+      if (ev.samples && ev.samples.length) {
+        s += `<div class="scrollx"><table class="ev"><tr><th>Time (UTC)</th><th>Agent</th><th>Rule</th><th>Lvl</th><th>Evt</th><th>Target</th><th>Src</th><th>Description</th></tr>` +
+          ev.samples.map(r => `<tr><td class="mono">${esc(r[0])}</td><td>${esc(r[1])}</td><td class="mono">${esc(r[2])}</td><td><span class="lvl ${lvlClass(r[3])}">${esc(r[3])}</span></td><td class="mono">${esc(r[4])}</td><td>${esc(r[5])}</td><td class="mono">${esc(r[6])}</td><td>${esc(r[7])}</td></tr>`).join("") + `</table></div>`;
+      }
+      if (ev.note) s += `<div class="src">▸ ${esc(ev.note)}</div>`;
+      return s;
+    }
+
+    /* ---------- evidence figures (always visible) ---------- */
+    function figs(items) {
+      if (!items || !items.length) return "";
+      return `<div class="ev-figs">` + items.map(p => {
+        const credit = p.bhTopology ? `<span class="proof-credit">topology graphic: ${esc(BH_TOPO_CREDIT)}</span>` : "";
+        return `<figure class="ev-fig"><img src="${esc(p.src)}" alt="${esc(p.caption)}" loading="lazy" decoding="async"/><figcaption>${esc(p.caption)}${credit}</figcaption></figure>`;
+      }).join("") + `</div>`;
+    }
+    function proofItems(kind, key) { return (PROOF[kind] || {})[key] || []; }
+
+    /* ---------- red team steps ---------- */
+    function hostNames(ids) { return ids.map(h => HOSTS[h] ? HOSTS[h].name : h).join(" → "); }
+    function renderRedSteps() {
+      $("#redSteps").innerHTML = STEPS.map(st => {
+        const ev = EVID[st.evid];
+        const proof = proofItems("steps", st.n);
+        let s = `<article class="card step-card phase-${st.ph}">
+          <div class="step-head"><span class="step-num">${st.n}</span>
+            <span class="ph">${esc(st.ph)}</span>
+            <h4 class="step-title">${esc(st.t)}</h4></div>
+          <div class="step-hosts">${esc(hostNames(st.hosts))}</div>`;
+        if (st.cmd) s += `<pre class="cmd">${fmtCmd(st.cmd)}</pre>`;
+        if (st.loot) s += `<p class="loot"><b>Loot:</b> ${esc(st.loot)}</p>`;
+        if (st.logNote) s += `<div class="lognote">${esc(st.logNote)}</div>`;
+        s += `<h4 class="lbl">Wazuh telemetry</h4>` + evBlock(ev);
+        if (proof.length) s += `<h4 class="lbl">Evidence</h4>` + figs(proof);
+        s += `</article>`;
+        return s;
+      }).join("");
+    }
+
+    /* ---------- annotated field-note pages ---------- */
+    function renderFieldNotes() {
+      const el = $("#fieldNotes");
+      if (!el || typeof WRITEUP_PAGES === "undefined") { if (el) el.innerHTML = ""; return; }
+      el.innerHTML = WRITEUP_PAGES.map(pg => {
+        const src = encodeURI(WRITEUP_DIR + pg.file);
+        return `<article class="card step-card phase-${pg.phase}">
+          <div class="step-head"><span class="step-num">${pg.n}</span><span class="ph">${esc(pg.phase)}</span>
+            <h4 class="step-title">${esc(pg.title)}</h4></div>
+          <div class="ev-figs"><figure class="ev-fig"><img src="${src}" alt="${esc(pg.title)} — annotated field notes" loading="lazy" decoding="async"/><figcaption>${esc(pg.caption)}<span class="proof-credit">Operator field notes (annotated in GIMP).</span></figcaption></figure></div>
+        </article>`;
+      }).join("");
+    }
+
+    /* ---------- composer ---------- */
+    function renderComposer() {
+      const R = COMPOSER_RUN; const el = $("#composerCard");
+      if (!R.operator) { el.innerHTML = `<p class="empty">Composer run data not loaded.</p>`; return; }
+      const ev = EVID.composer;
+      let s = `<article class="card composer-card" style="border-left:3px solid var(--cyan)">
+        <p class="why">${esc(R.objective)} This was a <b>separate, fully autonomous</b> session (operator: ${esc(R.operator)}) against the same lab as the manual chain above.</p>
+        <div class="composer-stats">
+          <div class="composer-stat"><div class="k">Model</div><div class="v">${esc(R.model)}</div></div>
+          <div class="composer-stat"><div class="k">Tokens</div><div class="v">${esc(R.tokens)}</div></div>
+          <div class="composer-stat"><div class="k">Duration</div><div class="v">${esc(R.duration)}</div></div>
+          <div class="composer-stat"><div class="k">Session</div><div class="v" style="font-size:.66rem">${esc(R.sessionStart)} → ${esc(R.sessionEnd)}</div></div>
+        </div>
+        <p class="kv">${esc(R.costNote)}</p>
+        <h4 class="lbl">Prove Enterprise Admin (re-run)</h4><pre class="cmd">${fmtCmd(R.verifyCmd)}</pre>
+        <h4 class="lbl">Wazuh · Composer on Kingslanding</h4>`;
+      if (ev && ev.query) s += `<div class="qbox">${esc(ev.query)}</div>`;
+      s += evBlock(ev);
+      if (R.proofImg) s += `<h4 class="lbl">Evidence</h4>` + figs([{ src: R.proofImg, caption: "Cursor billing usage (" + (R.model || "") + "), autonomous prompt, LDAP Enterprise-Admins proof, and agent session." }]);
+      if (R.promptRules && R.promptRules.length) {
+        s += `<h4 class="lbl">Benchmark rules of engagement</h4><ul class="tight">` + R.promptRules.map(r => `<li>${esc(r)}</li>`).join("") + `</ul>`;
+      }
+      s += `</article>`;
+      el.innerHTML = s;
+    }
+
+    /* ---------- blue team hardening ---------- */
+    function stepsFor(id) { return STEPS.filter(s => s.harden === id); }
+    function renderBlue() {
+      $("#blueHard").innerHTML = HARDENING.map(h => {
+        const ev = EVID[h.evid];
+        const isGap = h.status === "gap";
+        const rel = stepsFor(h.id);
+        const stepChips = rel.map(s => `<span class="chip-sm">step ${s.n}</span>`).join(" ");
+        let s = `<article class="card hard-card" style="border-left:3px solid ${isGap ? "var(--red)" : "var(--green)"}">
+          <div class="step-head"><h4 class="step-title">${esc(h.title)}</h4>${isGap ? `<span class="gap-flag">GAP</span>` : `<span class="on-flag">DETECTED</span>`}</div>
+          <div class="step-hosts">${esc(h.scope)} · ${esc(h.mitre)} · consensus: ${esc(h.consensus)}</div>
+          <div class="why">${h.why}</div>
+          <div class="fix"><b>Fix:</b> ${esc(h.fix)}</div>`;
+        if (h.debate) s += `<div class="debate-note"><b>Debate:</b> ${h.debate}</div>`;
+        if (rel.length) s += `<div style="margin:.4rem 0">${stepChips}</div>`;
+        s += `<h4 class="lbl">Wazuh query</h4><div class="qbox">${esc(h.query)}</div>`;
+        s += `<h4 class="lbl">Evidence (telemetry)</h4>` + evBlock(ev);
+        const proof = proofItems("hardening", h.id);
+        if (proof.length) s += `<h4 class="lbl">Evidence (capture)</h4>` + figs(proof);
+        s += `</article>`;
+        return s;
+      }).join("");
+    }
+    function renderKerb() {
+      const k = KERB_NOISE; const el = $("#kerbNoise");
+      let s = `<article class="card">
+        <p class="kv"><b>${esc(k.title || "Kerberos 4769 noise")}</b></p>
+        <div class="kv"><b>Total volume:</b> ${esc(k.total || "")} · <b>Peak user:</b> <span class="mono">${esc(k.peak_user || "")}</span> (${esc(k.peak_count || "")}) · <b>Source:</b> <span class="mono">${esc(k.source || "")}</span></div>
+        <div class="kv"><b>Timespan:</b> ${esc(k.timespan || "")} · <b>Agent:</b> ${esc(k.agent || "")}</div>
+        <h4 class="lbl">Problem</h4><div class="why">${esc(k.problem || "")}</div>
+        <h4 class="lbl">Fix</h4><div class="fix">${esc(k.fix || "")}</div>
+        <h4 class="lbl">Real signal to keep</h4><div class="kv">${esc(k.real_signal || "")}</div>`;
+      if (k.samples && k.samples.length) {
+        s += `<div class="scrollx"><table class="ev"><tr><th>Timestamp</th><th>Agent</th><th>Rule</th><th>Event</th><th>User</th><th>Source IP</th></tr>` +
+          k.samples.map(r => `<tr><td class="mono">${esc(r[0])}</td><td>${esc(r[1])}</td><td class="mono">${esc(r[2])}</td><td class="mono">${esc(r[3])}</td><td class="mono">${esc(r[4])}</td><td class="mono">${esc(r[5])}</td></tr>`).join("") + `</table></div>`;
+      }
+      s += `</article>`;
+      el.innerHTML = s;
+    }
+
+    /* ---------- purple steps ---------- */
+    function renderPurpleSteps() {
+      $("#purpleSteps").innerHTML = PURPLE_STEPS.map(p => {
+        const h = HARDENING.find(x => x.id === p.hardening) || {};
+        const ev = h.evid ? EVID[h.evid] : null;
+        const telemetry = p.telemetry.map(t => `<tr><td class="mono">${esc(t[0])}</td><td>${esc(t[1])}</td></tr>`).join("");
+        let s = `<article class="card purple-card" style="border-left:3px solid var(--purple)">
+          <div class="step-head"><span class="step-num">${p.n}</span><h4 class="step-title">${esc(p.title)}</h4></div>
+          <div class="why"><b>Attack:</b> ${esc(p.attack)}</div>
+          <h4 class="lbl">Expected detection telemetry</h4>
+          <table class="ev"><tr><th>Signal</th><th>What to look for</th></tr>${telemetry}</table>
+          <div class="fix"><b>Hardening:</b> ${esc(p.remediation)}</div>`;
+        if (h.query) s += `<h4 class="lbl">Live Wazuh evidence (${esc(h.title || "")})</h4><div class="qbox">${esc(h.query)}</div>` + evBlock(ev);
+        s += `</article>`;
+        return s;
+      }).join("");
+    }
+
+    /* ---------- domains ---------- */
+    function renderDomains() {
+      const out = Object.entries(DOMAINS).map(([key, d]) => {
+        let s = `<article class="card dom-card">
+          <div class="step-head"><h4 class="step-title">${esc(d.full)}</h4><span class="ph">${esc(d.label)}</span></div>
+          <div class="kv"><b>DC:</b> ${esc(d.dc)}</div>
+          <div class="kv"><b>SID:</b> <span class="mono">${esc(d.sid)}</span></div>
+          <div class="kv"><b>Trust:</b> ${esc(d.trust)}</div>
+          <h4 class="lbl">Privileged users</h4>` +
+          d.users.map(u => `<div class="u"><i style="background:${PRIV[u[0]]}"></i><span class="uname">${esc(u[1])}</span><span class="udesc">${esc(u[2])}</span></div>`).join("");
+        const grps = (BH.groups || []).filter(g => key === "root" ? /Enterprise/i.test(g.name) : !/Enterprise/i.test(g.name));
+        if (grps.length) s += `<h4 class="lbl">Group membership (BloodHound)</h4>` + grps.map(g => `<div class="kv"><b>${esc(g.name)}:</b> ${g.members.map(m => `<span class="chip-sm">${esc(m)}</span>`).join(" ")}</div>`).join("");
+        if (key === "north") {
+          s += `<h4 class="lbl">Abused ACL edges</h4><ul class="tight">` + (BH.acls || []).map(a => `<li><b>${esc(a.principal)}</b> — ${esc(a.rights.join(", "))} → <b>${esc(a.target)}</b><br><span class="udesc">${esc(a.note)}</span></li>`).join("") + `</ul>`;
+          s += `<h4 class="lbl">Kerberoastable</h4><div class="chips">` + (BH.kerberoastable || []).map(k => `<span class="chip">${esc(k)}</span>`).join("") + `</div>`;
+          if (BH.descLeak) s += `<div class="src">▸ ${esc(BH.descLeak)}</div>`;
+        } else if (BH.trust) {
+          s += `<h4 class="lbl">Trust abuse</h4><div class="kv">${esc(BH.trust.note)}</div>`;
+        }
+        const proof = proofItems("domains", key);
+        if (proof.length) s += `<h4 class="lbl">Evidence</h4>` + figs(proof);
+        s += `</article>`;
+        return s;
+      }).join("");
+      $("#domains").innerHTML = `<div class="two-col">${out}</div>`;
+    }
+
+    /* ---------- credentials ---------- */
+    function renderCreds() {
+      const pw = SEC.passwords || [];
+      let s = `<div class="card"><h4 class="lbl">Passwords &amp; accounts</h4>
+        <table class="ev"><tr><th>Account</th><th>Domain</th><th>Secret</th><th>Source</th><th>Grants</th></tr>` +
+        pw.map(p => `<tr><td class="mono">${esc(p[0])}</td><td>${esc(p[1])}</td><td class="mono">${esc(p[2])}</td><td>${esc(p[3])}</td><td>${esc(p[4])}</td></tr>`).join("") + `</table>`;
+      const ch = SEC.childHashes || [], rh = SEC.rootHashes || [];
+      if (ch.length) s += `<h4 class="lbl">Child domain hashes (DCSync)</h4><table class="ev"><tr><th>Account</th><th>RID</th><th>NTLM (LM:NT)</th><th>Use</th></tr>` + ch.map(r => `<tr><td class="mono">${esc(r[0])}</td><td>${esc(r[1])}</td><td class="mono">${esc(r[2])}</td><td>${esc(r[3])}</td></tr>`).join("") + `</table>`;
+      if (rh.length) s += `<h4 class="lbl">Root/forest hashes (DCSync)</h4><table class="ev"><tr><th>Account</th><th>RID</th><th>NTLM (LM:NT)</th><th>Use</th></tr>` + rh.map(r => `<tr><td class="mono">${esc(r[0])}</td><td>${esc(r[1])}</td><td class="mono">${esc(r[2])}</td><td>${esc(r[3])}</td></tr>`).join("") + `</table>`;
+      s += `</div>`;
+      $("#creds").innerHTML = s;
+    }
+
+    /* ---------- appendix (all unique evidence) ---------- */
+    function renderAppendix() {
+      const seen = new Set(), items = [];
+      Object.values(PROOF).forEach(bag => {
+        Object.values(bag).forEach(arr => (arr || []).forEach(p => {
+          if (p && p.src && !seen.has(p.src)) { seen.add(p.src); items.push(p); }
+        }));
+      });
+      if (COMPOSER_RUN.proofImg && !seen.has(COMPOSER_RUN.proofImg)) {
+        items.push({ src: COMPOSER_RUN.proofImg, caption: "Cursor Composer autonomous run — billing usage, prompt, and Enterprise-Admins proof." });
+      }
+      $("#appendix").innerHTML = items.map(p => {
+        const credit = p.bhTopology ? `<span class="proof-credit">topology graphic: ${esc(BH_TOPO_CREDIT)}</span>` : "";
+        return `<figure class="ev-fig"><img src="${esc(p.src)}" alt="${esc(p.caption)}" loading="lazy" decoding="async"/><figcaption>${esc(p.caption)}${credit}</figcaption></figure>`;
+      }).join("");
+    }
+
+    /* ---------- init ---------- */
+    renderCover();
+    buildTopo();
+    renderRedSteps();
+    renderFieldNotes();
+    renderComposer();
+    renderBlue();
+    renderKerb();
+    renderPurpleSteps();
+    renderDomains();
+    renderCreds();
+    renderAppendix();
+    $("#printBtn")?.addEventListener("click", () => window.print());
+  </script>
+</body>
+
+</html>

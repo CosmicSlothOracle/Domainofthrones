@@ -1,0 +1,943 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>GOAD — Active Directory Compromise · Penetration Test Write-Up</title>
+  <meta name="description"
+    content="Editorial penetration-test write-up of a full GOAD Active Directory forest compromise, with the operator's annotated field-note pages and every evidence file. Print-to-PDF ready, flowing layout." />
+  <meta name="color-scheme" content="light" />
+  <style>
+    :root {
+      --paper: #faf8f3;
+      --paper2: #f3efe6;
+      --card: #ffffff;
+      --ink: #1c1a17;
+      --muted: #54504a;
+      --faint: #8a847b;
+      --line: #e6e0d4;
+      --line2: #d6cdbd;
+      --red: #a4243b;
+      --blue: #1f4e79;
+      --purple: #5b3a8e;
+      --green: #2f6f4f;
+      --amber: #8a6300;
+      --brass: #8a6d3b;
+      --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Times New Roman", serif;
+      --sans: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+    }
+
+    body {
+      font-family: var(--sans);
+      background: var(--paper);
+      color: var(--ink);
+      line-height: 1.62;
+      font-size: 15px;
+    }
+
+    .page {
+      max-width: 880px;
+      margin: 0 auto;
+      padding: clamp(20px, 4vw, 56px) clamp(18px, 4vw, 60px) 80px;
+    }
+
+    a {
+      color: var(--blue);
+    }
+
+    .mono {
+      font-family: var(--mono);
+      font-size: .92em;
+    }
+
+    /* ---------- toolbar (screen only) ---------- */
+    .toolbar {
+      position: sticky;
+      top: 0;
+      z-index: 30;
+      display: flex;
+      gap: .7rem;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      padding: .7rem clamp(18px, 4vw, 40px);
+      background: rgba(250, 248, 243, .92);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--line2);
+    }
+
+    .toolbar strong {
+      font-family: var(--serif);
+      font-size: .95rem;
+    }
+
+    .toolbar .grp {
+      display: flex;
+      gap: .55rem;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: .4rem;
+      border-radius: 4px;
+      padding: .5rem .95rem;
+      font: 600 .8rem var(--sans);
+      cursor: pointer;
+      border: 1px solid var(--line2);
+      background: var(--card);
+      color: var(--ink);
+      text-decoration: none;
+      transition: .15s;
+    }
+
+    .btn:hover {
+      border-color: var(--brass);
+    }
+
+    .btn-print {
+      background: var(--ink);
+      color: #fff;
+      border-color: var(--ink);
+    }
+
+    .btn-zip {
+      color: var(--green);
+      border-color: #bcd6c6;
+      background: #f1f7f3;
+    }
+
+    .toolbar .hint {
+      font-size: .72rem;
+      color: var(--faint);
+    }
+
+    /* ---------- masthead ---------- */
+    .masthead {
+      border-bottom: 3px double var(--line2);
+      padding-bottom: 1.6rem;
+      margin-bottom: 2.2rem;
+    }
+
+    .kicker {
+      font-size: .72rem;
+      letter-spacing: .26em;
+      text-transform: uppercase;
+      color: var(--brass);
+      font-weight: 700;
+    }
+
+    h1.title {
+      font-family: var(--serif);
+      font-weight: 700;
+      font-size: clamp(2rem, 5vw, 3.1rem);
+      line-height: 1.05;
+      letter-spacing: -.01em;
+      margin: .5rem 0 .4rem;
+    }
+
+    .subtitle {
+      font-family: var(--serif);
+      font-style: italic;
+      font-size: 1.15rem;
+      color: var(--muted);
+      max-width: 60ch;
+    }
+
+    .byline {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .4rem 1.4rem;
+      margin-top: 1.2rem;
+      font-size: .82rem;
+      color: var(--faint);
+    }
+
+    .byline b {
+      color: var(--ink);
+      font-weight: 600;
+    }
+
+    .verdict {
+      display: inline-flex;
+      align-items: center;
+      gap: .5rem;
+      margin-top: 1.1rem;
+      padding: .35rem .8rem;
+      border: 1px solid var(--red);
+      border-radius: 999px;
+      color: var(--red);
+      font-weight: 700;
+      font-size: .76rem;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+
+    .verdict .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--red);
+    }
+
+    /* ---------- abstract / exec summary ---------- */
+    .abstract {
+      font-size: 1.02rem;
+      color: var(--ink);
+    }
+
+    .abstract p {
+      margin: 0 0 1rem;
+    }
+
+    .abstract .lead-para::first-letter {
+      font-family: var(--serif);
+      float: left;
+      font-size: 3.3em;
+      line-height: .72;
+      padding: .06em .12em 0 0;
+      color: var(--red);
+      font-weight: 700;
+    }
+
+    .stat-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 0;
+      border: 1px solid var(--line2);
+      border-radius: 6px;
+      overflow: hidden;
+      margin: 1.6rem 0;
+      background: var(--card);
+    }
+
+    .stat-row .s {
+      padding: .8rem .9rem;
+      border-right: 1px solid var(--line);
+    }
+
+    .stat-row .s:last-child {
+      border-right: none;
+    }
+
+    .stat-row .v {
+      font-family: var(--serif);
+      font-weight: 700;
+      font-size: 1.5rem;
+      line-height: 1;
+    }
+
+    .stat-row .k {
+      font-size: .66rem;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--faint);
+      margin-top: .3rem;
+    }
+
+    /* ---------- section dividers ---------- */
+    .part {
+      margin-top: 3rem;
+    }
+
+    .part-head {
+      display: flex;
+      align-items: baseline;
+      gap: .8rem;
+      border-bottom: 2px solid var(--ink);
+      padding-bottom: .35rem;
+      margin-bottom: 1.4rem;
+    }
+
+    .part-head .pnum {
+      font-family: var(--serif);
+      font-size: 1rem;
+      color: var(--brass);
+      font-weight: 700;
+    }
+
+    .part-head h2 {
+      font-family: var(--serif);
+      font-size: 1.7rem;
+      font-weight: 700;
+      margin: 0;
+      flex: 1;
+    }
+
+    .part-head .tag {
+      font-size: .72rem;
+      color: var(--faint);
+      letter-spacing: .04em;
+    }
+
+    .band-red .part-head h2 {
+      color: var(--red);
+    }
+
+    .band-blue .part-head h2 {
+      color: var(--blue);
+    }
+
+    .band-purple .part-head h2 {
+      color: var(--purple);
+    }
+
+    /* ---------- phase article ---------- */
+    .phase {
+      margin: 2.2rem 0;
+    }
+
+    .phase-kicker {
+      font-size: .72rem;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      font-weight: 700;
+      color: var(--brass);
+    }
+
+    .phase h3 {
+      font-family: var(--serif);
+      font-size: 1.35rem;
+      font-weight: 700;
+      margin: .15rem 0 .6rem;
+    }
+
+    .phase p {
+      margin: .5rem 0;
+      color: var(--ink);
+    }
+
+    .phase p.narr {
+      color: var(--muted);
+    }
+
+    code.inl {
+      font-family: var(--mono);
+      font-size: .88em;
+      background: var(--paper2);
+      border: 1px solid var(--line);
+      border-radius: 3px;
+      padding: 0 .3em;
+      color: #6a3a1f;
+    }
+
+    b,
+    strong {
+      color: var(--ink);
+    }
+
+    /* figures */
+    figure.fig {
+      margin: 1.2rem 0;
+      break-inside: avoid;
+    }
+
+    figure.fig img {
+      display: block;
+      width: 100%;
+      height: auto;
+      border: 1px solid var(--line2);
+      border-radius: 6px;
+      background: #fff;
+    }
+
+    figure.fig.hero img {
+      border-color: var(--line2);
+      box-shadow: 0 2px 14px rgba(28, 26, 23, .07);
+    }
+
+    figure.fig figcaption {
+      font-family: var(--serif);
+      font-style: italic;
+      font-size: .86rem;
+      color: var(--muted);
+      margin-top: .5rem;
+      padding-left: .2rem;
+      border-left: 2px solid var(--brass);
+      padding-left: .7rem;
+    }
+
+    .fig-credit {
+      display: block;
+      font-style: normal;
+      font-family: var(--sans);
+      font-size: .68rem;
+      color: var(--faint);
+      margin-top: .2rem;
+    }
+
+    .ev-strip {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 1rem;
+      margin: 1.1rem 0;
+    }
+
+    .ev-strip figure {
+      margin: 0;
+    }
+
+    /* telemetry chips */
+    .tele {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .4rem;
+      align-items: center;
+      margin: .8rem 0;
+      padding: .6rem .8rem;
+      background: var(--paper2);
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      font-size: .78rem;
+    }
+
+    .tele .lbl {
+      font-weight: 700;
+      color: var(--faint);
+      text-transform: uppercase;
+      font-size: .64rem;
+      letter-spacing: .08em;
+      margin-right: .2rem;
+    }
+
+    .chip {
+      font-family: var(--mono);
+      font-size: .72rem;
+      border: 1px solid var(--line2);
+      border-radius: 999px;
+      padding: .1rem .5rem;
+      background: #fff;
+      color: var(--muted);
+    }
+
+    .chip.gap {
+      color: var(--red);
+      border-color: #e3b6bd;
+      background: #fbf0f1;
+      font-weight: 700;
+    }
+
+    .chip.det {
+      color: var(--green);
+      border-color: #bcd6c6;
+      background: #f1f7f3;
+      font-weight: 700;
+    }
+
+    /* findings table */
+    table.findings {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: .85rem;
+      margin: 1rem 0;
+    }
+
+    table.findings th,
+    table.findings td {
+      text-align: left;
+      padding: .5rem .6rem;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+    }
+
+    table.findings th {
+      font-size: .66rem;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: var(--faint);
+      border-bottom: 2px solid var(--line2);
+    }
+
+    .pill {
+      font-size: .66rem;
+      font-weight: 700;
+      padding: .1rem .45rem;
+      border-radius: 999px;
+      white-space: nowrap;
+    }
+
+    .pill.gap {
+      color: var(--red);
+      background: #fbf0f1;
+      border: 1px solid #e3b6bd;
+    }
+
+    .pill.det {
+      color: var(--green);
+      background: #f1f7f3;
+      border: 1px solid #bcd6c6;
+    }
+
+    .roadmap {
+      counter-reset: rm;
+      list-style: none;
+      padding: 0;
+      margin: 1rem 0;
+    }
+
+    .roadmap li {
+      position: relative;
+      padding: .7rem 0 .7rem 2.6rem;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .roadmap li::before {
+      counter-increment: rm;
+      content: counter(rm);
+      position: absolute;
+      left: 0;
+      top: .7rem;
+      width: 1.8rem;
+      height: 1.8rem;
+      border-radius: 50%;
+      background: var(--purple);
+      color: #fff;
+      font-family: var(--serif);
+      font-weight: 700;
+      display: grid;
+      place-items: center;
+      font-size: .9rem;
+    }
+
+    .roadmap .t {
+      font-weight: 700;
+    }
+
+    .roadmap .d {
+      color: var(--muted);
+      font-size: .9rem;
+    }
+
+    /* credentials */
+    table.creds {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: .8rem;
+      margin: 1rem 0;
+      background: var(--card);
+    }
+
+    table.creds th,
+    table.creds td {
+      border: 1px solid var(--line);
+      padding: .4rem .55rem;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    table.creds th {
+      background: var(--paper2);
+      font-size: .64rem;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      color: var(--faint);
+    }
+
+    table.creds td.mono {
+      font-family: var(--mono);
+      font-size: .78rem;
+    }
+
+    .callout {
+      border: 1px solid var(--line2);
+      border-left: 4px solid var(--brass);
+      background: var(--card);
+      border-radius: 6px;
+      padding: .9rem 1.1rem;
+      margin: 1.2rem 0;
+      font-size: .92rem;
+      color: var(--muted);
+    }
+
+    .composer-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .5rem 1.6rem;
+      font-size: .82rem;
+      color: var(--muted);
+      margin: .6rem 0 1rem;
+    }
+
+    .composer-meta b {
+      color: var(--ink);
+    }
+
+    pre.cmd {
+      font-family: var(--mono);
+      font-size: .76rem;
+      background: #1c1a17;
+      color: #ece6da;
+      border-radius: 6px;
+      padding: .7rem .8rem;
+      overflow-x: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+      margin: .6rem 0;
+    }
+
+    .gallery {
+      columns: 2;
+      column-gap: 1rem;
+      margin: 1.2rem 0;
+    }
+
+    @media(max-width:680px) {
+      .gallery {
+        columns: 1;
+      }
+    }
+
+    .gallery figure {
+      break-inside: avoid;
+      margin: 0 0 1rem;
+    }
+
+    footer {
+      margin-top: 3rem;
+      padding-top: 1.2rem;
+      border-top: 3px double var(--line2);
+      font-size: .76rem;
+      color: var(--faint);
+    }
+
+    .empty {
+      color: var(--faint);
+      font-style: italic;
+    }
+
+    /* =====================================================================
+       PRINT — modern-classic, flowing (NOT forced into A4 page-per-section)
+       ===================================================================== */
+    @page {
+      margin: 16mm 15mm;
+    }
+
+    @media print {
+      body {
+        background: #fff;
+        font-size: 10.8px;
+      }
+
+      .no-print {
+        display: none !important;
+      }
+
+      .page {
+        max-width: none;
+        padding: 0;
+      }
+
+      a {
+        color: var(--blue);
+        text-decoration: none;
+      }
+
+      /* faithful light palette in the PDF */
+      .stat-row,
+      .callout,
+      pre.cmd,
+      .tele,
+      table.creds th,
+      .pill,
+      figure.fig img,
+      .verdict {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+
+      /* let the document FLOW — only protect atomic blocks */
+      figure.fig,
+      .phase,
+      .stat-row,
+      .callout,
+      table.findings tr,
+      table.creds tr,
+      .roadmap li,
+      .gallery figure {
+        break-inside: avoid;
+      }
+
+      .part-head,
+      h3,
+      .phase-kicker {
+        break-after: avoid;
+      }
+
+      .part {
+        break-before: auto;
+      }
+
+      figure.fig img,
+      .gallery figure img {
+        max-height: none;
+      }
+
+      .gallery {
+        columns: 2;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="toolbar no-print">
+    <div class="grp">
+      <strong>GOAD — Active Directory Compromise · Write-Up</strong>
+      <span class="hint">Print → <em>Save as PDF</em> / <em>Microsoft Print to PDF</em> · flows naturally, not fixed to A4.</span>
+    </div>
+    <div class="grp">
+      <a class="btn btn-zip" href="GOAD_Report_Evidence.zip" download>⬇ Evidence (.zip)</a>
+      <button type="button" class="btn btn-print" id="printBtn">🖨 Print / Save as PDF</button>
+      <a class="btn" href="report.html">Dark report</a>
+      <a class="btn" href="index.html">Dashboard</a>
+    </div>
+  </div>
+
+  <article class="page">
+    <header class="masthead">
+      <div class="kicker">Penetration Test Write-Up · Purple Team Assessment</div>
+      <h1 class="title">GOAD: Anatomy of a Full Forest Compromise</h1>
+      <p class="subtitle">From a single sprayed password to Enterprise Admin across the
+        <span class="mono">sevenkingdoms.local</span> forest — with the operator's annotated field notes and every
+        captured artifact.</p>
+      <div class="byline">
+        <span><b>Targets</b> north.sevenkingdoms.local · sevenkingdoms.local</span>
+        <span><b>Method</b> assumed-breach from an internal jump box</span>
+        <span><b>Telemetry</b> Wazuh SIEM (goad-vm-wazuh)</span>
+      </div>
+      <div class="verdict"><span class="dot"></span> Verdict: forest fully compromised &amp; persistent</div>
+    </header>
+
+    <section class="abstract" id="abstract"></section>
+    <div class="stat-row" id="statRow"></div>
+
+    <section class="part band-red" id="part-red">
+      <div class="part-head"><span class="pnum">I</span>
+        <h2>The Intrusion</h2><span class="tag">Red Team · annotated field notes &amp; evidence</span>
+      </div>
+      <p class="narr" style="color:var(--muted);margin-top:-.4rem">Each phase below pairs the operator's hand-annotated
+        write-up page with the underlying terminal and graph captures, plus the matching Wazuh telemetry.</p>
+      <div id="phases"></div>
+      <div id="composer"></div>
+    </section>
+
+    <section class="part band-blue" id="part-blue">
+      <div class="part-head"><span class="pnum">II</span>
+        <h2>What the SIEM Saw</h2><span class="tag">Blue Team · detection &amp; gaps</span>
+      </div>
+      <p class="narr" style="color:var(--muted);margin-top:-.4rem">The noisy early phases were detectable; the most
+        damaging actions were not. Findings flagged <span class="pill gap">GAP</span> produced zero events.</p>
+      <div id="findings"></div>
+      <div id="kerb"></div>
+    </section>
+
+    <section class="part band-purple" id="part-purple">
+      <div class="part-head"><span class="pnum">III</span>
+        <h2>Remediation Roadmap</h2><span class="tag">Purple Team · attack → fix</span>
+      </div>
+      <ol class="roadmap" id="roadmap"></ol>
+      <h3 style="font-family:var(--serif);font-size:1.2rem;margin-top:1.8rem">Recovered credentials</h3>
+      <p class="narr" style="color:var(--muted)">Source-of-truth material recovered during the engagement. Sensitive NT
+        hashes and AES keys are redacted in this published write-up.</p>
+      <div id="creds"></div>
+    </section>
+
+    <section class="part" id="part-appendix">
+      <div class="part-head"><span class="pnum">IV</span>
+        <h2>Evidence Appendix</h2><span class="tag">every captured artifact</span>
+      </div>
+      <p class="narr" style="color:var(--muted);margin-top:-.4rem">All artifacts below ship in
+        <span class="mono">GOAD_Report_Evidence.zip</span> together with the raw Wazuh JSON exports.</p>
+      <div class="gallery" id="gallery"></div>
+    </section>
+
+    <footer>
+      <p>Compiled from <span class="mono">report-data.js</span> (attack model + annotated pages) and
+        <span class="mono">dashboard-data.js</span> (Wazuh telemetry). Topology graphic credited in-figure where used.
+        Re-verify the autonomous-agent persistence finding with the LDAP command shown in §I.</p>
+    </footer>
+  </article>
+
+  <script src="dashboard-data.js"></script>
+  <script src="report-data.js"></script>
+  <script>
+    const EVID = window.EVID || {}, BH = window.BLOODHOUND || {}, SEC = window.SECRETS || {},
+      KERB_NOISE = window.KERB_NOISE || {}, NARRATIVES = window.NARRATIVES || {}, COMPOSER_RUN = window.COMPOSER_RUN || {};
+    const $ = s => document.querySelector(s);
+    const esc = s => String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    const enc = p => encodeURI(p);
+    function mdInline(t) {
+      return esc(t).replace(/`([^`]+)`/g, '<code class="inl">$1</code>').replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>');
+    }
+    function proofItems(kind, key) { return (PROOF[kind] || {})[key] || []; }
+
+    /* ---- abstract + stats ---- */
+    function renderAbstract() {
+      $("#abstract").innerHTML = `
+        <p class="lead-para">A single unmanaged Linux jump box was enough to dismantle the entire forest. A password
+        spray recovered <b>brandon.stark</b>; a logon script and an Active Directory description field leaked two more
+        credentials; a writable Group Policy Object handed over local administrator on the child domain controller; and
+        a DCSync dumped the child domain wholesale.</p>
+        <p>Because SID filtering was disabled on the inter-domain trust, <span class="mono">raiseChild.py</span> forged an
+        Enterprise Admins SID into the forest root, enabling a root DCSync and a durable backdoor account. The same
+        objective was later reproduced <b>fully autonomously</b> by Cursor's in-house Composer agent, which reached
+        Enterprise Admin and planted its own <span class="mono">Composer</span> backdoor in roughly three quarters of an
+        hour.</p>
+        <p>The story the telemetry tells is the real lesson: the SIEM <b>caught the loud opening</b> — spray bursts and
+        account lockouts — but was <b>blind to the decisive moves</b>. Group Policy modification, directory replication,
+        and privileged group changes each produced <em>zero</em> events.</p>`;
+      const gaps = (HARDENING || []).filter(h => h.status === "gap").length;
+      const stats = [
+        ["16", "attack steps"],
+        ["2", "domains owned"],
+        [String(gaps), "detection gaps"],
+        [String((SEC.passwords || []).length), "creds recovered"],
+        [esc(COMPOSER_RUN.duration || "—"), "autonomous run"]
+      ];
+      $("#statRow").innerHTML = stats.map(s => `<div class="s"><div class="v">${esc(s[0])}</div><div class="k">${esc(s[1])}</div></div>`).join("");
+    }
+
+    /* ---- telemetry chip line ---- */
+    function teleLine(evidKey, isGap) {
+      const ev = EVID[evidKey];
+      let chips = "";
+      if (isGap || !ev || !Object.keys(ev.byRule || {}).length) {
+        chips = `<span class="chip gap">0 events — detection gap</span>`;
+      } else {
+        chips = Object.entries(ev.byRule).slice(0, 5).map(([k, v]) => {
+          const o = typeof v === "object" ? v : { count: v };
+          return `<span class="chip">rule ${esc(k)} ×${o.count}${o.level ? " · L" + o.level : ""}</span>`;
+        }).join("");
+        if (ev.total) chips = `<span class="chip det">${esc(ev.total)} events indexed</span>` + chips;
+      }
+      return `<div class="tele"><span class="lbl">Wazuh</span>${chips}</div>`;
+    }
+
+    function figsStrip(items) {
+      if (!items || !items.length) return "";
+      return `<div class="ev-strip">` + items.map(p => {
+        const credit = p.bhTopology ? `<span class="fig-credit">topology graphic: ${esc(BH_TOPO_CREDIT)}</span>` : "";
+        return `<figure class="fig"><img src="${enc(p.src)}" alt="${esc(p.caption)}" loading="lazy" decoding="async"/><figcaption>${esc(p.caption)}${credit}</figcaption></figure>`;
+      }).join("") + `</div>`;
+    }
+
+    /* ---- phases (annotated pages as the spine) ---- */
+    const PHASE_LABEL = { foothold: "Phase · Foothold", child: "Phase · Child Domain", forest: "Phase · Forest", persist: "Phase · Persistence" };
+    function renderPhases() {
+      $("#phases").innerHTML = WRITEUP_PAGES.map(pg => {
+        const narr = (pg.steps || []).map(n => NARRATIVES[n]).filter(Boolean).map(t => `<p class="narr">${mdInline(t)}</p>`).join("");
+        // primary telemetry key from the first matching STEP
+        const step = STEPS.find(s => (pg.steps || []).includes(s.n));
+        const hard = step ? HARDENING.find(h => h.id === step.harden) : null;
+        const isGap = hard && hard.status === "gap";
+        const tele = step ? teleLine(step.evid, isGap) : "";
+        // supporting raw evidence for the phase's steps
+        const seen = new Set(), raw = [];
+        (pg.steps || []).forEach(n => proofItems("steps", n).forEach(p => { if (!seen.has(p.src)) { seen.add(p.src); raw.push(p); } }));
+        return `<article class="phase">
+          <div class="phase-kicker">${esc(PHASE_LABEL[pg.phase] || pg.phase)}</div>
+          <h3>${pg.n}. ${esc(pg.title)}</h3>
+          ${narr}
+          <figure class="fig hero"><img src="${enc(WRITEUP_DIR + pg.file)}" alt="${esc(pg.title)} — annotated field notes" loading="lazy" decoding="async"/><figcaption>${esc(pg.caption)}<span class="fig-credit">Operator field notes (annotated in GIMP).</span></figcaption></figure>
+          ${tele}
+          ${figsStrip(raw)}
+        </article>`;
+      }).join("");
+    }
+
+    /* ---- composer ---- */
+    function renderComposer() {
+      const R = COMPOSER_RUN; if (!R.operator) { $("#composer").innerHTML = ""; return; }
+      const ev = EVID.composer;
+      let s = `<article class="phase">
+        <div class="phase-kicker">Coda · Autonomous Agent</div>
+        <h3>The machine did it too — in ${esc(R.duration || "under an hour")}</h3>
+        <p class="narr">${esc(R.objective)} This was a <b>separate, fully autonomous</b> session driven by ${esc(R.operator)} (${esc(R.model)}) against the same lab — no human steering, no lab-specific write-ups.</p>
+        <div class="composer-meta">
+          <span><b>Model</b> ${esc(R.model)}</span><span><b>Tokens</b> ${esc(R.tokens)}</span>
+          <span><b>Duration</b> ${esc(R.duration)}</span><span><b>Session</b> ${esc(R.sessionStart)} → ${esc(R.sessionEnd)}</span>
+        </div>
+        <div class="callout">${esc(R.costNote)}</div>
+        <p class="narr">Prove the persistence backdoor is still an Enterprise Admin:</p>
+        <pre class="cmd">${esc(R.verifyCmd)}</pre>
+        ${teleLine("composer", false)}`;
+      if (R.proofImg) s += figsStrip([{ src: R.proofImg, caption: "Cursor billing usage (" + (R.model || "") + "), the autonomous prompt, and the LDAP Enterprise-Admins proof for the Composer backdoor." }]);
+      s += `</article>`;
+      $("#composer").innerHTML = s;
+    }
+
+    /* ---- blue findings ---- */
+    function renderFindings() {
+      const rows = HARDENING.map(h => {
+        const isGap = h.status === "gap";
+        return `<tr>
+          <td><b>${esc(h.title)}</b><br><span style="color:var(--muted);font-size:.85em">${h.why.replace(/<[^>]+>/g, "")}</span></td>
+          <td><span class="mono" style="font-size:.78rem">${esc(h.mitre)}</span><br><span style="color:var(--faint);font-size:.78rem">${esc(h.scope)}</span></td>
+          <td>${isGap ? `<span class="pill gap">GAP</span>` : `<span class="pill det">DETECTED</span>`}</td>
+        </tr>`;
+      }).join("");
+      $("#findings").innerHTML = `<table class="findings"><tr><th>Finding &amp; what happened</th><th>Technique / scope</th><th>SIEM</th></tr>${rows}</table>`;
+    }
+    function renderKerb() {
+      const k = KERB_NOISE;
+      $("#kerb").innerHTML = `<div class="callout"><b>Telemetry hygiene — Kerberos 4769 flood.</b> ${esc(k.problem || "")} <b>Fix:</b> ${esc(k.fix || "")} (${esc(k.total || "")} events, peak <span class="mono">${esc(k.peak_user || "")}</span> from <span class="mono">${esc(k.source || "")}</span>).</div>`;
+    }
+
+    /* ---- purple roadmap ---- */
+    function renderRoadmap() {
+      $("#roadmap").innerHTML = PURPLE_STEPS.map(p =>
+        `<li><span class="t">${esc(p.title)}</span> — <span class="d">${esc(p.remediation)}</span></li>`).join("");
+    }
+
+    /* ---- credentials ---- */
+    function renderCreds() {
+      const pw = SEC.passwords || [];
+      let s = `<table class="creds"><tr><th>Account</th><th>Domain</th><th>Secret</th><th>Source</th><th>Grants</th></tr>` +
+        pw.map(p => `<tr><td class="mono">${esc(p[0])}</td><td>${esc(p[1])}</td><td class="mono">${esc(p[2])}</td><td>${esc(p[3])}</td><td>${esc(p[4])}</td></tr>`).join("") + `</table>`;
+      $("#creds").innerHTML = s;
+    }
+
+    /* ---- full evidence gallery (every artifact) ---- */
+    function renderGallery() {
+      const seen = new Set(), items = [];
+      const add = (src, caption, bh) => { if (src && !seen.has(src)) { seen.add(src); items.push({ src, caption, bhTopology: bh }); } };
+      // annotated field-note pages first
+      WRITEUP_PAGES.forEach(pg => add(WRITEUP_DIR + pg.file, pg.title + " — annotated field notes"));
+      // per-phase report pages
+      (REPORT_STEPS || []).forEach(st => { if (st.img) add(st.img, st.t + " — report page"); });
+      // every PROOF artifact
+      Object.values(PROOF).forEach(bag => Object.values(bag).forEach(arr => (arr || []).forEach(p => p && add(p.src, p.caption, p.bhTopology))));
+      // composer
+      if (COMPOSER_RUN.proofImg) add(COMPOSER_RUN.proofImg, "Cursor Composer autonomous run — billing, prompt & Enterprise-Admins proof");
+      $("#gallery").innerHTML = items.map(p => {
+        const credit = p.bhTopology ? `<span class="fig-credit">topology graphic: ${esc(BH_TOPO_CREDIT)}</span>` : "";
+        return `<figure class="fig"><img src="${enc(p.src)}" alt="${esc(p.caption)}" loading="lazy" decoding="async"/><figcaption>${esc(p.caption)}${credit}</figcaption></figure>`;
+      }).join("");
+    }
+
+    renderAbstract();
+    renderPhases();
+    renderComposer();
+    renderFindings();
+    renderKerb();
+    renderRoadmap();
+    renderCreds();
+    renderGallery();
+    $("#printBtn")?.addEventListener("click", () => window.print());
+  </script>
+</body>
+
+</html>
