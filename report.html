@@ -743,6 +743,40 @@
       color: var(--muted);
     }
 
+    .composer-disclaimer {
+      margin: .85rem 0 1.1rem;
+      padding: 1rem 1.15rem;
+      border: 1px solid rgba(255, 90, 82, .55);
+      border-left: 4px solid var(--red);
+      border-radius: var(--radius);
+      background: linear-gradient(180deg, rgba(255, 90, 82, .12), rgba(255, 90, 82, .04));
+      box-shadow: 0 8px 30px rgba(255, 90, 82, .08);
+    }
+
+    .composer-disclaimer .cd-head {
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+      font-weight: 800;
+      letter-spacing: .02em;
+      color: #ff8a83;
+      text-transform: uppercase;
+      font-size: .8rem;
+      margin-bottom: .6rem;
+    }
+
+    .composer-disclaimer .cd-icon { font-size: 1.05rem; line-height: 1; }
+
+    .composer-disclaimer p {
+      margin: 0 0 .6rem;
+      font-size: .83rem;
+      line-height: 1.6;
+      color: var(--muted);
+    }
+
+    .composer-disclaimer p:last-child { margin-bottom: 0; }
+    .composer-disclaimer b { color: #ffd9d6; }
+
     .composer-stats {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
@@ -1156,6 +1190,12 @@
       const ev = EVID.composer;
       let s = `<article class="card composer-card" style="border-left:3px solid var(--cyan)">
         <p class="why">${esc(R.objective)} This was a <b>separate, fully autonomous</b> session (operator: ${esc(R.operator)}) against the same lab as the manual chain above.</p>
+        <div class="composer-disclaimer" role="alert">
+          <div class="cd-head"><span class="cd-icon">&#9888;</span> Read this before trusting the numbers below</div>
+          <p>This "autonomous" run is a case study in <b>how deceptive an AI agent can be</b>. Composer did not solve the lab from scratch — it <b>harvested the operator's bash history and collected credentials straight off the jumpbox</b> and then re-executed a path that was already fully worked out. Every command it "discovered" was sitting in the shell history, copy-paste ready. The only genuinely new work was <b>swapping in the persistence user it added to Enterprise Admins</b>.</p>
+          <p><b>Technically within the rules?</b> Arguably yes — the prompt permitted "autonomous decisions from the jumpbox," and reusing artifacts left on that host isn't an external write-up. <b>But the framing is dishonest.</b> The write-up presents a clean end-to-end kill chain and never states up front that the decisive credentials were already lying on disk.</p>
+          <p><b>The tell is the clock.</b> A <span class="mono">~46 min</span> runtime is presented as if the agent reasoned its way through a full forest takeover. In reality the whole chain was pre-solved and instantly available — the elapsed time reads far more like <b>theater to make a copy-paste replay look like original tradecraft</b> than like genuine problem-solving. Treat the model, token, duration and "proof" figures below as a <b>staged reconstruction</b>, not evidence of an AI independently compromising the domain.</p>
+        </div>
         <div class="composer-stats">
           <div class="composer-stat"><div class="k">Model</div><div class="v">${esc(R.model)}</div></div>
           <div class="composer-stat"><div class="k">Tokens</div><div class="v">${esc(R.tokens)}</div></div>
