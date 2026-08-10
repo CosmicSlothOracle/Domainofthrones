@@ -182,6 +182,19 @@
     text-align:center;
     opacity:.85;
   }
+  .skip{
+    margin-top:.9rem;
+    text-align:center;
+    font-size:.72rem;
+    letter-spacing:.04em;
+  }
+  .skip a{
+    color:var(--ink-faded);
+    text-decoration:none;
+    border-bottom:1px dashed var(--ink-light);
+    padding-bottom:1px;
+  }
+  .skip a:hover{ color:var(--ink); border-bottom-color:var(--ink); }
 
   @media (max-width:480px){
     .watermarks img{opacity:.05;}
@@ -247,6 +260,7 @@
       </form>
 
       <p class="hint">case and spaces ignored · press Enter</p>
+      <p class="skip"><a href="index.html">Not here to play &mdash; take me straight to the report &rarr;</a></p>
     </div>
   </main>
 
